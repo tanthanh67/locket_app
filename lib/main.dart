@@ -1,39 +1,42 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:locket_app/home_page.dart';
-import 'firebase_options.dart'; // File này do CLI tự tạo
-import 'login_page.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+// Services
+import 'core/services/auth_service.dart';
+import 'core/services/cloudinary_service.dart';
+import 'core/services/gemini_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+// Modules (Giả định bạn đã tạo các Repository)
+import 'modules/app/presentation/app_root.dart';
+// import 'modules/auth/repository/auth_repository.dart';
+// import 'modules/camera/repository/camera_repository.dart';
+// import 'modules/home/repository/home_repository.dart';
 
 void main() async {
-  // Bắt buộc phải có để khởi tạo Flutter
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  await Firebase.initializeApp();
 
-  // Khởi tạo kết nối với Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // 1. Khởi tạo Services
+  final authService = AuthService();
+  final cloudinaryService = CloudinaryService();
+  final geminiService = GeminiService();
 
-  runApp(const MyApp());
-}
+  // 2. Khởi tạo Repositories (Truyền Service vào)
+  // final authRepo = AuthRepository(authService);
+  // final cameraRepo = CameraRepository(cloudinaryService, geminiService);
+  // final homeRepo = HomeRepository();
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: StreamBuilder<User?>(
-        // Lắng nghe trạng thái đăng nhập của Firebase
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          // Nếu snapshot có dữ liệu (user khác null) nghĩa là đã đăng nhập
-          if (snapshot.hasData) {
-            return const HomePage();
-          }
-          // Ngược lại, bắt đăng nhập
-          return const LoginPage();
-        },
-      ),
-    );
-  }
+  runApp(
+    MultiRepositoryProvider(
+      providers: [
+        // RepositoryProvider.value(value: authRepo),
+        // RepositoryProvider.value(value: cameraRepo),
+        // RepositoryProvider.value(value: homeRepo),
+      ],
+      child: const AppRoot(), // AppRoot sẽ chứa MultiBlocProvider bên trong
+    ),
+  );
 }
