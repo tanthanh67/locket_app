@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "795779410771",
+    "project_id": "locket-clone-app",
+    "storage_bucket": "locket-clone-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:795779410771:android:cb4d614818137e88c10fa6",
+        "android_client_info": {
+          "package_name": "com.example.locket_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "795779410771-b6vrkfaumvjbi9ddnadnqg5atc1iqr8j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.locket_app",
+            "certificate_hash": "61d5faf3bd286d0aee93ccf55a5af63a5d604e66"
+          }
+        },
+        {
+          "client_id": "795779410771-f97gkilj9v93r8261kq4b4rj3bokd3ti.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB3Ebj-vcSGXKmwyg7SZ-lvMIJNKFf8CyM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "795779410771-f97gkilj9v93r8261kq4b4rj3bokd3ti.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "795779410771-hmdl1f1rgfog4fg3vapqni73481lf2ic.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.locketApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
