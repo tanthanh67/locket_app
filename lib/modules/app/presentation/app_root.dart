@@ -1,37 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:locket_app/modules/feed/presentation/pages/feed_page.dart';
+import '../../auth/presentation/application/cubit/auth_cubit.dart';
+import '../../auth/presentation/pages/login_page.dart';
+import '../../auth/presentation/pages/waiting_verification_page.dart';
 
 class AppRoot extends StatelessWidget {
   const AppRoot({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Locket Clone',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark, // Locket thường có giao diện tối
-        primarySwatch: Colors.yellow, // Màu vàng đặc trưng của Locket Gold
-        scaffoldBackgroundColor: Colors.black,
-      ),
-      // Sau này sẽ dùng BlocBuilder để check AuthState ở đây
-      home: const PlaceholderPage(), 
+    return BlocBuilder<AuthCubit, AuthState>(
+      builder: (context, state) {
+        if (state is Authenticated) {
+          // Nếu đã xác thực mail -> Vào Feed
+          if (state.user.emailVerified) return const FeedPage();
+
+          // Nếu chưa xác thực -> Hiện màn hình chờ (Waiting)
+          return const WaitingVerificationPage();
+        }
+        return const LoginPage();
+      },
     );
   }
 }
 
-// Trang tạm thời để kiểm tra app đã chạy chưa
-class PlaceholderPage extends StatelessWidget {
-  const PlaceholderPage({super.key});
+// Trang tạm thời để test nút Đăng xuất
+class DummyFeedPage extends StatelessWidget {
+  const DummyFeedPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text(
-          "Locket App đã kết nối Firebase!",
-          style: TextStyle(color: Colors.yellow, fontSize: 20),
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Locket Gold Feed"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => context.read<AuthCubit>().logout(),
+          ),
+        ],
       ),
+      body: const Center(child: Text("Chào mừng bạn đã vào App!")),
     );
   }
 }

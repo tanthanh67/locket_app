@@ -1,42 +1,58 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-// Services
-import 'core/services/auth_service.dart';
-import 'core/services/cloudinary_service.dart';
-import 'core/services/gemini_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-// Modules (Giả định bạn đã tạo các Repository)
+// Import các lớp của bạn
+import 'modules/auth/data/repositories/auth_repository_impl.dart';
+import 'modules/auth/presentation/application/cubit/auth_cubit.dart';
 import 'modules/app/presentation/app_root.dart';
-// import 'modules/auth/repository/auth_repository.dart';
-// import 'modules/camera/repository/camera_repository.dart';
-// import 'modules/home/repository/home_repository.dart';
+import 'core/constants/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 1. Load biến môi trường (.env)
   await dotenv.load(fileName: ".env");
+
+  // 2. Khởi tạo Firebase
   await Firebase.initializeApp();
 
-  // 1. Khởi tạo Services
-  final authService = AuthService();
-  final cloudinaryService = CloudinaryService();
-  final geminiService = GeminiService();
-
-  // 2. Khởi tạo Repositories (Truyền Service vào)
-  // final authRepo = AuthRepository(authService);
-  // final cameraRepo = CameraRepository(cloudinaryService, geminiService);
-  // final homeRepo = HomeRepository();
+  // 3. Khởi tạo Repository thực tế
+  final authRepo = AuthRepositoryImpl();
 
   runApp(
     MultiRepositoryProvider(
       providers: [
-        // RepositoryProvider.value(value: authRepo),
-        // RepositoryProvider.value(value: cameraRepo),
-        // RepositoryProvider.value(value: homeRepo),
+        RepositoryProvider<AuthRepositoryImpl>.value(value: authRepo),
       ],
-      child: const AppRoot(), // AppRoot sẽ chứa MultiBlocProvider bên trong
+      child: MultiBlocProvider(
+        providers: [
+          // Khởi tạo AuthCubit và bắt đầu theo dõi phiên đăng nhập ngay lập tức
+          BlocProvider(
+            create: (context) => AuthCubit(authRepo)..monitorAuthState(),
+          ),
+        ],
+        child: const MyApp(),
+      ),
     ),
   );
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Locket Gold',
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: AppColors.surface,
+        fontFamily: 'Inter', // Hoặc font bạn đã cài
+      ),
+      home: const AppRoot(), // AppRoot sẽ quyết định hiện trang nào
+    );
+  }
 }
