@@ -1,53 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:locket_app/modules/feed/presentation/data/feed_items.dart';
 
 class FeedArea extends StatefulWidget {
-  const FeedArea({super.key, this.onUserChanged});
+  const FeedArea({
+    super.key,
+    this.onUserChanged,
+    this.controller,
+    this.highlightedIndex,
+  });
 
   final ValueChanged<String>? onUserChanged;
+  final PageController? controller;
+  final int? highlightedIndex;
 
   @override
   State<FeedArea> createState() => _FeedAreaState();
 }
 
 class _FeedAreaState extends State<FeedArea> {
-  static const List<_FeedItem> _items = [
-    _FeedItem(
-      imageUrl:
-          'https://img.magnific.com/free-photo/closeup-shot-beautiful-butterfly-with-interesting-textures-orange-petaled-flower_181624-7640.jpg?semt=ais_hybrid&w=740&q=80',
-      caption: 'This is a caption for the photo.',
-      userName: 'John Doe',
-      avatarUrl:
-          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRGa70BgePn1Rsf41oiG6ac0_TAzpKXj4d9qg&s',
-      timeAgo: '2h',
-    ),
-    _FeedItem(
-      imageUrl:
-          'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1200&q=80',
-      caption: 'Morning light in the city.',
-      userName: 'Mai Nguyen',
-      avatarUrl:
-          'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-      timeAgo: '5h',
-    ),
-    _FeedItem(
-      imageUrl:
-          'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80',
-      caption: 'Late afternoon by the lake.',
-      userName: 'Alex Tran',
-      avatarUrl:
-          'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=200&q=80',
-      timeAgo: '1d',
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return PageView.builder(
+      controller: widget.controller,
       scrollDirection: Axis.vertical,
-      itemCount: _items.length,
+      itemCount: feedItems.length,
       onPageChanged: _handlePageChanged,
       itemBuilder: (context, index) {
-        return _buildFeedItem(_items[index]);
+        return _buildFeedItem(feedItems[index], index);
       },
     );
   }
@@ -56,15 +35,19 @@ class _FeedAreaState extends State<FeedArea> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.onUserChanged?.call(_items.first.userName);
+      if (feedItems.isNotEmpty) {
+        widget.onUserChanged?.call(feedItems.first.userName);
+      }
     });
   }
 
   void _handlePageChanged(int index) {
-    widget.onUserChanged?.call(_items[index].userName);
+    widget.onUserChanged?.call(feedItems[index].userName);
   }
 
-  Widget _buildFeedItem(_FeedItem item) {
+  Widget _buildFeedItem(FeedItem item, int index) {
+    final isHighlighted = widget.highlightedIndex == index;
+
     return Column(
       children: [
         const Spacer(),
@@ -75,11 +58,16 @@ class _FeedAreaState extends State<FeedArea> {
             child: Stack(
               alignment: Alignment.bottomCenter,
               children: [
-                Image.network(
-                  item.imageUrl,
-                  fit: BoxFit.cover,
-                  height: 400,
-                  width: double.infinity,
+                AnimatedScale(
+                  scale: isHighlighted ? 1.04 : 1.0,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutBack,
+                  child: Image.network(
+                    item.imageUrl,
+                    fit: BoxFit.cover,
+                    height: 400,
+                    width: double.infinity,
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
@@ -134,20 +122,4 @@ class _FeedAreaState extends State<FeedArea> {
       ],
     );
   }
-}
-
-class _FeedItem {
-  final String imageUrl;
-  final String caption;
-  final String userName;
-  final String avatarUrl;
-  final String timeAgo;
-
-  const _FeedItem({
-    required this.imageUrl,
-    required this.caption,
-    required this.userName,
-    required this.avatarUrl,
-    required this.timeAgo,
-  });
 }

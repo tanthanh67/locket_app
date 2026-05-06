@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 class BottomNav extends StatelessWidget {
-  const BottomNav({super.key});
+  final VoidCallback? onHistoryTap;
+
+  const BottomNav({super.key, this.onHistoryTap});
 
   @override
   Widget build(BuildContext context) {
@@ -11,7 +13,21 @@ class BottomNav extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Grid 2x2 icon
-          Icon(Icons.grid_view_rounded, color: Colors.white70, size: 28),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onHistoryTap,
+              borderRadius: BorderRadius.circular(20),
+              child: const Padding(
+                padding: EdgeInsets.all(6),
+                child: Icon(
+                  Icons.grid_view_rounded,
+                  color: Colors.white70,
+                  size: 28,
+                ),
+              ),
+            ),
+          ),
 
           // Nút chụp / đăng story (có viền vàng)
           Container(
