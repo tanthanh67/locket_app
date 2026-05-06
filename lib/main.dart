@@ -2,35 +2,61 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:locket_app/modules/friends/data/repositories/friends_repository_impl.dart';
+import 'package:locket_app/modules/friends/domain/repository/friends_repository.dart';
+import 'package:locket_app/modules/friends/presentation/application/cubit/friends_cubit.dart';
 
-// Import các lớp của bạn
+// Core
+import 'core/constants/app_colors.dart';
+import 'core/services/cloudinary_service.dart';
+import 'core/services/gemini_service.dart';
+
+// Auth Module
+import 'modules/auth/domain/repository/auth_repository.dart'; // Import Interface
 import 'modules/auth/data/repositories/auth_repository_impl.dart';
 import 'modules/auth/presentation/application/cubit/auth_cubit.dart';
+
+// Camera Module
+import 'modules/camera/domain/repository/camera_repository.dart'; // Import Interface
+import 'modules/camera/data/repositories/camera_repository_impl.dart';
+import 'modules/camera/presentation/application/cubit/camera_cubit.dart';
+
+// App Root
 import 'modules/app/presentation/app_root.dart';
-import 'core/constants/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 1. Load biến môi trường (.env)
   await dotenv.load(fileName: ".env");
-
-  // 2. Khởi tạo Firebase
   await Firebase.initializeApp();
 
-  // 3. Khởi tạo Repository thực tế
   final authRepo = AuthRepositoryImpl();
+  final cloudinaryService = CloudinaryService();
+  final geminiService = GeminiService();
+
+  // Khởi tạo repo camera
+  final cameraRepo = CameraRepositoryImpl(cloudinaryService, geminiService);
+  final friendsRepo = FriendsRepositoryImpl();
 
   runApp(
     MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<AuthRepositoryImpl>.value(value: authRepo),
+        // SỬA Ở ĐÂY: Dùng kiểu AuthRepository thay vì AuthRepositoryImpl
+        RepositoryProvider<AuthRepository>.value(value: authRepo),
+        // SỬA Ở ĐÂY: Dùng kiểu CameraRepository thay vì CameraRepositoryImpl
+        RepositoryProvider<CameraRepository>.value(value: cameraRepo),
+        RepositoryProvider<FriendsRepository>.value(value: friendsRepo),
       ],
       child: MultiBlocProvider(
         providers: [
-          // Khởi tạo AuthCubit và bắt đầu theo dõi phiên đăng nhập ngay lập tức
           BlocProvider(
-            create: (context) => AuthCubit(authRepo)..monitorAuthState(),
+            create: (context) =>
+                AuthCubit(context.read<AuthRepository>())..monitorAuthState(),
+          ),
+          BlocProvider(
+            create: (context) => CameraCubit(context.read<CameraRepository>()),
+          ),
+          BlocProvider(
+            create: (context) => FriendsCubit(friendsRepo)..initFriendsModule(),
           ),
         ],
         child: const MyApp(),
@@ -48,11 +74,15 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Locket Gold',
       theme: ThemeData(
+        useMaterial3: true,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: AppColors.surface,
-        fontFamily: 'Inter', // Hoặc font bạn đã cài
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.primary,
+          brightness: Brightness.dark,
+        ),
       ),
-      home: const AppRoot(), // AppRoot sẽ quyết định hiện trang nào
+      home: const AppRoot(),
     );
   }
 }

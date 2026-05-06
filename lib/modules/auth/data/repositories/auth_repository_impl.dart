@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:locket_app/modules/auth/data/models/user_model.dart';
 import '../../domain/repository/auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
@@ -24,6 +25,7 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  // ... các import ...
   @override
   Future<void> signUpAndSave(String email, String password, String name) async {
     final cred = await _auth.createUserWithEmailAndPassword(
@@ -31,17 +33,18 @@ class AuthRepositoryImpl implements AuthRepository {
       password: password,
     );
     if (cred.user != null) {
-      // 1. Gửi mail xác thực
       await cred.user!.sendEmailVerification();
-      // 2. Lưu thông tin vào Firestore
-      await _firestore.collection('users').doc(cred.user!.uid).set({
-        'uid': cred.user!.uid,
-        'displayName': name,
-        'email': email,
-        'photoUrl': '',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      // Lưu ý: Không SignOut ở đây để AppRoot có thể giữ User ở màn hình Waiting
+      final model = UserModel(
+        uid: cred.user!.uid,
+        email: email,
+        displayName: name,
+        photoUrl: '',
+        friends: const [], // Khởi tạo rỗng
+      );
+      await _firestore
+          .collection('users')
+          .doc(model.uid)
+          .set(model.toFirestore());
     }
   }
 
