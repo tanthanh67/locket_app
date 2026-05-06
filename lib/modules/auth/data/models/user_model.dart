@@ -1,20 +1,31 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/domain/entities/user_entity.dart';
 
 class UserModel extends UserEntity {
   const UserModel({
     required super.uid,
-    required super.email,
     required super.displayName,
-    super.photoUrl,
+    required super.email,
+    required super.photoUrl,
+    required super.friends,
   });
 
-  // Chuyển sang Map để ghi vào Firestore
+  factory UserModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return UserModel(
+      uid: doc.id,
+      displayName: data['displayName'] ?? '',
+      email: data['email'] ?? '',
+      photoUrl: data['photoUrl'] ?? '',
+      friends: List<String>.from(data['friends'] ?? []),
+    );
+  }
+
   Map<String, dynamic> toFirestore() => {
-    'uid': uid,
-    'email': email,
     'displayName': displayName,
-    'photoUrl': photoUrl ?? '',
-    'friends': [], // Mặc định chưa có bạn
-    'createdAt': DateTime.now(),
+    'email': email,
+    'photoUrl': photoUrl,
+    'friends': friends,
+    'updatedAt': FieldValue.serverTimestamp(),
   };
 }

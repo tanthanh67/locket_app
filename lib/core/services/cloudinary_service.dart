@@ -1,24 +1,22 @@
 import 'package:cloudinary_public/cloudinary_public.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class CloudinaryService {
-  // Thay thông tin của bạn vào đây
   final _cloudinary = CloudinaryPublic(
-    'YOUR_CLOUD_NAME',
-    'YOUR_PRESET_NAME',
-    cache: false,
+    dotenv.env['CLOUDINARY_CLOUD_NAME']!,
+    dotenv.env['CLOUDINARY_UPLOAD_PRESET']!,
   );
 
-  Future<String?> uploadMedia(String filePath) async {
+  Future<String?> uploadImage(String path) async {
     try {
-      CloudinaryResponse response = await _cloudinary.uploadFile(
+      final res = await _cloudinary.uploadFile(
         CloudinaryFile.fromFile(
-          filePath,
+          path,
           resourceType: CloudinaryResourceType.Image,
         ),
       );
-      return response.secureUrl;
+      return res.secureUrl;
     } catch (e) {
-      print("Cloudinary Error: $e");
       return null;
     }
   }
