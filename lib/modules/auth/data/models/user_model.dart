@@ -17,4 +17,12 @@ class UserModel extends UserEntity {
     'friends': [], // Mặc định chưa có bạn
     'createdAt': DateTime.now(),
   };
+  factory UserModel.fromFirestore(Map<String, dynamic> json) {
+    return UserModel(
+      uid: json['uid'] ?? '',
+      email: json['email'] ?? '',
+      displayName: json['displayName'] ?? '',
+      photoUrl: json['photoUrl'],
+    );
+  }
 }

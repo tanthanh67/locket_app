@@ -6,4 +6,5 @@ class AppColors {
   static const Color surface = Color(0xFF0A0A0B); // Đen nền
   static const Color card = Color(0xFF1C1C1E); // Đen card
   static const Color textGrey = Color(0xFF8E8E93);
+  static const Color background = Color(0xFF0A0A0B);
 }
