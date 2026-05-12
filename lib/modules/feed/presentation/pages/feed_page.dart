@@ -3,6 +3,8 @@ import 'package:locket_app/modules/feed/presentation/components/bottom_nav.dart'
 import 'package:locket_app/modules/feed/presentation/components/circle_button.dart';
 import 'package:locket_app/modules/feed/presentation/components/feed_area.dart';
 import 'package:locket_app/modules/feed/presentation/components/filter_friend_button.dart';
+import 'package:locket_app/modules/feed/presentation/data/feed_items.dart';
+import 'package:locket_app/modules/history/presentation/pages/history_page.dart';
 
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
@@ -14,13 +16,16 @@ class FeedPage extends StatefulWidget {
 class _FeedPageState extends State<FeedPage> {
   final TextEditingController _replyController = TextEditingController();
   final FocusNode _replyFocusNode = FocusNode();
+  final PageController _pageController = PageController();
   bool _isReplying = false;
   String _currentUser = 'John Doe';
+  int? _highlightedIndex;
 
   @override
   void dispose() {
     _replyController.dispose();
     _replyFocusNode.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -46,9 +51,15 @@ class _FeedPageState extends State<FeedPage> {
                     ],
                   ),
                 ),
-                Expanded(child: FeedArea(onUserChanged: _handleUserChanged)),
+                Expanded(
+                  child: FeedArea(
+                    onUserChanged: _handleUserChanged,
+                    controller: _pageController,
+                    highlightedIndex: _highlightedIndex,
+                  ),
+                ),
                 _buildCommentBar(),
-                const BottomNav(),
+                BottomNav(onHistoryTap: _openHistory),
               ],
             ),
           ),
@@ -65,6 +76,48 @@ class _FeedPageState extends State<FeedPage> {
 
     setState(() {
       _currentUser = userName;
+    });
+  }
+
+  Future<void> _openHistory() async {
+    final selectedIndex = await Navigator.of(
+      context,
+    ).push<int>(MaterialPageRoute(builder: (_) => const HistoryPage()));
+
+    if (!mounted || selectedIndex == null || feedItems.isEmpty) {
+      return;
+    }
+
+    final safeIndex = selectedIndex.clamp(0, feedItems.length - 1).toInt();
+
+    await _pageController.animateToPage(
+      safeIndex,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _highlightedIndex = safeIndex;
+    });
+
+    _clearHighlightAfter(safeIndex);
+  }
+
+  void _clearHighlightAfter(int index) {
+    Future.delayed(const Duration(milliseconds: 320), () {
+      if (!mounted) {
+        return;
+      }
+
+      if (_highlightedIndex == index) {
+        setState(() {
+          _highlightedIndex = null;
+        });
+      }
     });
   }
 
