@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:locket_app/modules/camera/presentation/pages/camera_page.dart';
+import 'package:locket_app/modules/feed/presentation/components/feed_top_bar.dart';
+import 'package:locket_app/modules/feed/presentation/data/feed_items.dart';
 import 'package:locket_app/modules/feed/presentation/pages/feed_page.dart';
-import 'package:locket_app/modules/friends/presentation/pages/friends_page.dart';
+import 'package:locket_app/modules/friends/presentation/application/cubit/friends_cubit.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -10,31 +13,96 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  // initialPage: 1 (Ở giữa là Camera)
-  final PageController _horizontalController = PageController(initialPage: 1);
+  final PageController _verticalController = PageController();
+  int _verticalPage = 0;
+  String _selectedFriend = 'All friends';
+
+  @override
+  void dispose() {
+    _verticalController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: PageView(
-        controller: _horizontalController,
-        children: [
-          const Center(child: Text("Chat Screen")), // Page 0: Bên trái
-          _buildVerticalNavigation(), // Page 1: Ở giữa (Camera + Feed)
-          const FriendsPage(), // Page 2: Bên phải
-        ],
-      ),
+      body: _buildVerticalNavigation(),
     );
   }
 
   Widget _buildVerticalNavigation() {
-    return PageView(
-      scrollDirection: Axis.vertical,
+    return Stack(
       children: [
-        const CameraPage(), // Vuốt lên/xuống giữa Camera và Feed
-        const FeedPage(),
+        PageView(
+          controller: _verticalController,
+          onPageChanged: (page) {
+            setState(() {
+              _verticalPage = page;
+            });
+          },
+          scrollDirection: Axis.vertical,
+          children: [
+            CameraPage(onShowFeed: _showFeed),
+            FeedPage(onCameraTap: _showCamera, selectedFriend: _selectedFriend),
+          ],
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(bottom: false, child: _buildFixedTopBar()),
+        ),
       ],
+    );
+  }
+
+  Widget _buildFixedTopBar() {
+    return _verticalPage == 0 ? _buildCameraTopBar() : _buildFeedTopBar();
+  }
+
+  Widget _buildCameraTopBar() {
+    return BlocBuilder<FriendsCubit, FriendsState>(
+      builder: (context, state) {
+        final count = state is FriendsLoaded ? state.myFriends.length : 0;
+        final label = '$count ${count == 1 ? 'Friend' : 'Friends'}';
+
+        return FeedTopBar(centerLabel: label);
+      },
+    );
+  }
+
+  Widget _buildFeedTopBar() {
+    return FeedTopBar(
+      filterOptions: _friendFilterOptions,
+      selectedFilter: _selectedFriend,
+      onFilterChanged: (friend) {
+        setState(() {
+          _selectedFriend = friend;
+        });
+      },
+    );
+  }
+
+  List<String> get _friendFilterOptions {
+    final names = feedItems.map((item) => item.userName).toSet().toList()
+      ..sort();
+    return ['All friends', ...names];
+  }
+
+  Future<void> _showCamera() {
+    return _verticalController.animateToPage(
+      0,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Future<void> _showFeed() {
+    return _verticalController.animateToPage(
+      1,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
     );
   }
 }

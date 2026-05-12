@@ -1,22 +1,74 @@
 import 'package:flutter/material.dart';
+import 'package:locket_app/modules/feed/presentation/components/circle_button.dart';
 
-class FilterFriendButton extends StatefulWidget {
-  final List<String> options;
-  final ValueChanged<String>? onChanged;
-  final String selectedLabel;
+class FeedTopBar extends StatelessWidget {
+  final VoidCallback? onProfileTap;
+  final VoidCallback? onChatTap;
+  final String? centerLabel;
+  final IconData centerIcon;
+  final List<String> filterOptions;
+  final String selectedFilter;
+  final ValueChanged<String>? onFilterChanged;
 
-  const FilterFriendButton({
+  const FeedTopBar({
     super.key,
-    this.options = const ['All friends'],
-    this.onChanged,
-    this.selectedLabel = 'All friends',
+    this.onProfileTap,
+    this.onChatTap,
+    this.centerLabel,
+    this.centerIcon = Icons.group_rounded,
+    this.filterOptions = const ['All friends'],
+    this.selectedFilter = 'All friends',
+    this.onFilterChanged,
   });
 
   @override
-  State<FilterFriendButton> createState() => _FilterFriendButtonState();
+  Widget build(BuildContext context) {
+    final label = centerLabel ?? selectedFilter;
+    final canOpenFilter = centerLabel == null && onFilterChanged != null;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          CircleButton(icon: Icons.person_outline_rounded, onTap: onProfileTap),
+          _CenterPill(
+            label: label,
+            icon: centerIcon,
+            options: filterOptions,
+            canOpen: canOpenFilter,
+            onChanged: onFilterChanged,
+          ),
+          CircleButton(
+            icon: Icons.chat_bubble_outline_rounded,
+            onTap: onChatTap,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _FilterFriendButtonState extends State<FilterFriendButton> {
+class _CenterPill extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final List<String> options;
+  final bool canOpen;
+  final ValueChanged<String>? onChanged;
+
+  const _CenterPill({
+    required this.label,
+    required this.icon,
+    required this.options,
+    required this.canOpen,
+    this.onChanged,
+  });
+
+  @override
+  State<_CenterPill> createState() => _CenterPillState();
+}
+
+class _CenterPillState extends State<_CenterPill> {
   final GlobalKey _anchorKey = GlobalKey();
   bool _isMenuOpen = false;
 
@@ -25,30 +77,41 @@ class _FilterFriendButtonState extends State<FilterFriendButton> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: _openMenu,
-        borderRadius: BorderRadius.circular(20),
+        onTap: widget.canOpen ? _openMenu : null,
+        borderRadius: BorderRadius.circular(28),
         child: Container(
           key: _anchorKey,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          width: 178,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1C),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFF2E2E2C), width: 0.5),
+            color: const Color(0xFF2F2F2F),
+            borderRadius: BorderRadius.circular(28),
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  widget.selectedLabel,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(widget.icon, color: Colors.white, size: 24),
+              const SizedBox(width: 10),
+              Flexible(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeOutCubic,
+                  child: Text(
+                    widget.label,
+                    key: ValueKey(widget.label),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 6),
+              ),
+              if (widget.canOpen) ...[
+                const SizedBox(width: 4),
                 AnimatedRotation(
                   turns: _isMenuOpen ? 0.5 : 0,
                   duration: const Duration(milliseconds: 180),
@@ -60,7 +123,7 @@ class _FilterFriendButtonState extends State<FilterFriendButton> {
                   ),
                 ),
               ],
-            ),
+            ],
           ),
         ),
       ),

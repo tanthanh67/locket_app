@@ -4,11 +4,13 @@ import 'package:locket_app/modules/feed/presentation/data/feed_items.dart';
 class FeedArea extends StatefulWidget {
   const FeedArea({
     super.key,
+    required this.items,
     this.onUserChanged,
     this.controller,
     this.highlightedIndex,
   });
 
+  final List<FeedItem> items;
   final ValueChanged<String>? onUserChanged;
   final PageController? controller;
   final int? highlightedIndex;
@@ -20,13 +22,20 @@ class FeedArea extends StatefulWidget {
 class _FeedAreaState extends State<FeedArea> {
   @override
   Widget build(BuildContext context) {
+    if (widget.items.isEmpty) {
+      return const Center(
+        child: Text('No moments yet', style: TextStyle(color: Colors.white70)),
+      );
+    }
+
     return PageView.builder(
+      physics: const PageScrollPhysics(parent: BouncingScrollPhysics()),
       controller: widget.controller,
       scrollDirection: Axis.vertical,
-      itemCount: feedItems.length,
+      itemCount: widget.items.length,
       onPageChanged: _handlePageChanged,
       itemBuilder: (context, index) {
-        return _buildFeedItem(feedItems[index], index);
+        return _buildFeedItem(widget.items[index], index);
       },
     );
   }
@@ -35,14 +44,14 @@ class _FeedAreaState extends State<FeedArea> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (feedItems.isNotEmpty) {
-        widget.onUserChanged?.call(feedItems.first.userName);
+      if (widget.items.isNotEmpty) {
+        widget.onUserChanged?.call(widget.items.first.userName);
       }
     });
   }
 
   void _handlePageChanged(int index) {
-    widget.onUserChanged?.call(feedItems[index].userName);
+    widget.onUserChanged?.call(widget.items[index].userName);
   }
 
   Widget _buildFeedItem(FeedItem item, int index) {
@@ -50,51 +59,57 @@ class _FeedAreaState extends State<FeedArea> {
 
     return Column(
       children: [
-        const Spacer(),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Stack(
-              alignment: Alignment.bottomCenter,
-              children: [
-                AnimatedScale(
-                  scale: isHighlighted ? 1.04 : 1.0,
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutBack,
-                  child: Image.network(
-                    item.imageUrl,
-                    fit: BoxFit.cover,
-                    height: 400,
-                    width: double.infinity,
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      item.caption,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      AnimatedScale(
+                        scale: isHighlighted ? 1.04 : 1.0,
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutBack,
+                        child: Image.network(
+                          item.imageUrl,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
                       ),
-                    ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            item.caption,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -118,7 +133,7 @@ class _FeedAreaState extends State<FeedArea> {
             ),
           ],
         ),
-        const Spacer(),
+        const SizedBox(height: 14),
       ],
     );
   }
