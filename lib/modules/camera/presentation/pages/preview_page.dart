@@ -16,7 +16,14 @@ class PreviewPage extends StatefulWidget {
 
 class _PreviewPageState extends State<PreviewPage> {
   final _captionController = TextEditingController();
+  late final Future<List<String>> _friendsFuture;
   List<String> selectedUids = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _friendsFuture = context.read<CameraRepository>().getMyFriendIds();
+  }
 
   @override
   void dispose() {
@@ -29,63 +36,185 @@ class _PreviewPageState extends State<PreviewPage> {
     return BlocListener<CameraCubit, CameraState>(
       listener: (context, state) {
         if (state.status == CameraStatus.success) {
-          Navigator.pop(context); // Quay về camera
+          context.read<CameraCubit>().resetStatus();
+          Navigator.pop(context);
+        }
+
+        if (state.status == CameraStatus.error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.errorMessage ?? 'Could not post moment'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
           context.read<CameraCubit>().resetStatus();
         }
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         backgroundColor: Colors.black,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.download, color: Colors.white),
-              onPressed: () async {
-                await ImageGallerySaverPlus.saveFile(widget.path);
-                if (!context.mounted) {
-                  return;
-                }
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Saved successfully!")),
-                );
-              },
+              tooltip: 'Save',
+              icon: const Icon(
+                Icons.file_download_rounded,
+                color: Colors.white,
+              ),
+              onPressed: _saveToGallery,
             ),
           ],
         ),
-        body: Column(
+        body: SafeArea(
+          top: false,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+              final mediaSide = (constraints.maxWidth - 24)
+                  .clamp(280.0, constraints.maxHeight * 0.58)
+                  .toDouble();
+
+              return Stack(
+                children: [
+                  Align(
+                    alignment: Alignment.topCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                      child: _buildMediaPreview(mediaSide),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: AnimatedPadding(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      padding: EdgeInsets.fromLTRB(
+                        12,
+                        0,
+                        12,
+                        12 + keyboardInset,
+                      ),
+                      child: _buildComposerPanel(),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMediaPreview(double side) {
+    return SizedBox.square(
+      dimension: side,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(38),
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            AspectRatio(
-              aspectRatio: 1,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(40),
-                child: widget.isVideo
-                    ? const Center(child: Icon(Icons.play_circle, size: 50))
-                    : Image.file(File(widget.path), fit: BoxFit.cover),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: TextField(
-                controller: _captionController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: "Add a message...",
-                  hintStyle: TextStyle(color: Colors.white30),
+            widget.isVideo
+                ? Container(
+                    color: const Color(0xFF151515),
+                    child: const Icon(
+                      Icons.play_circle_fill_rounded,
+                      color: Colors.white,
+                      size: 72,
+                    ),
+                  )
+                : Image.file(File(widget.path), fit: BoxFit.cover),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.18),
+                  ],
                 ),
               ),
             ),
-            const Text(
-              "Choose viewers:",
-              style: TextStyle(
-                color: Colors.yellow,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            _buildFriendSelector(),
-            const Spacer(),
-            _buildSendButton(),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComposerPanel() {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFF111111).withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white10),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black54,
+            blurRadius: 24,
+            offset: Offset(0, -6),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(child: _buildCaptionField()),
+                const SizedBox(width: 10),
+                _buildSendButton(),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Text(
+                  'Viewers',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                _buildSelectAllButton(),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _buildFriendSelector(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCaptionField() {
+    return TextField(
+      controller: _captionController,
+      minLines: 1,
+      maxLines: 3,
+      textInputAction: TextInputAction.newline,
+      style: const TextStyle(color: Colors.white, fontSize: 15),
+      decoration: InputDecoration(
+        hintText: 'Add a message...',
+        hintStyle: const TextStyle(color: Colors.white38),
+        filled: true,
+        fillColor: Colors.white10,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(22),
+          borderSide: BorderSide.none,
         ),
       ),
     );
@@ -93,11 +222,33 @@ class _PreviewPageState extends State<PreviewPage> {
 
   Widget _buildFriendSelector() {
     return SizedBox(
-      height: 100,
+      height: 58,
       child: FutureBuilder<List<String>>(
-        future: context.read<CameraRepository>().getMyFriendIds(),
+        future: _friendsFuture,
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const SizedBox();
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Align(
+              alignment: Alignment.centerLeft,
+              child: SizedBox.square(
+                dimension: 22,
+                child: CircularProgressIndicator(
+                  color: Color(0xFFFFD233),
+                  strokeWidth: 2.4,
+                ),
+              ),
+            );
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'No friends yet',
+                style: TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+            );
+          }
+
           final friends = snapshot.data!;
           return ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -106,19 +257,30 @@ class _PreviewPageState extends State<PreviewPage> {
               final uid = friends[index];
               final isSelected = selectedUids.contains(uid);
               return GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () => setState(
                   () => isSelected
                       ? selectedUids.remove(uid)
                       : selectedUids.add(uid),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: CircleAvatar(
-                    radius: 30,
-                    backgroundColor: isSelected
-                        ? Colors.yellow
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  margin: const EdgeInsets.only(right: 10),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSelected
+                        ? const Color(0xFFFFD233)
                         : Colors.white10,
-                    child: const Icon(Icons.person, color: Colors.white),
+                    border: Border.all(
+                      color: isSelected ? Colors.white : Colors.white12,
+                      width: 1.4,
+                    ),
+                  ),
+                  child: Icon(
+                    isSelected ? Icons.check_rounded : Icons.person_rounded,
+                    color: isSelected ? Colors.black : Colors.white70,
+                    size: 24,
                   ),
                 ),
               );
@@ -129,35 +291,87 @@ class _PreviewPageState extends State<PreviewPage> {
     );
   }
 
+  Widget _buildSelectAllButton() {
+    return FutureBuilder<List<String>>(
+      future: _friendsFuture,
+      builder: (context, snapshot) {
+        final friends = snapshot.data ?? const <String>[];
+        if (friends.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final allSelected = selectedUids.length == friends.length;
+        return TextButton(
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFFFFD233),
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            minimumSize: const Size(0, 32),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          onPressed: () {
+            setState(() {
+              selectedUids = allSelected ? [] : List<String>.from(friends);
+            });
+          },
+          child: Text(allSelected ? 'Clear' : 'All friends'),
+        );
+      },
+    );
+  }
+
   Widget _buildSendButton() {
     return BlocBuilder<CameraCubit, CameraState>(
       builder: (context, state) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 30),
-          child: GestureDetector(
-            onTap: state.status == CameraStatus.loading
-                ? null
-                : () {
-                    context.read<CameraCubit>().postMoment(
-                      localPath: widget.path,
-                      manualCaption: _captionController.text,
-                      selectedFriendIds: selectedUids,
-                    );
-                  },
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              child: state.status == CameraStatus.loading
-                  ? const CircularProgressIndicator(color: Colors.yellow)
-                  : const Icon(Icons.send, color: Colors.white, size: 30),
+        final isLoading = state.status == CameraStatus.loading;
+
+        return GestureDetector(
+          onTap: isLoading ? null : _postMoment,
+          child: Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFD233),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFD233).withValues(alpha: 0.25),
+                  blurRadius: 16,
+                ),
+              ],
             ),
+            child: isLoading
+                ? const Padding(
+                    padding: EdgeInsets.all(13),
+                    child: CircularProgressIndicator(
+                      color: Colors.black,
+                      strokeWidth: 2.8,
+                    ),
+                  )
+                : const Icon(Icons.send_rounded, color: Colors.black, size: 23),
           ),
         );
       },
+    );
+  }
+
+  Future<void> _saveToGallery() async {
+    await ImageGallerySaverPlus.saveFile(widget.path);
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Saved successfully!')));
+  }
+
+  void _postMoment() {
+    FocusScope.of(context).unfocus();
+    context.read<CameraCubit>().postMoment(
+      localPath: widget.path,
+      manualCaption: _captionController.text.trim(),
+      selectedFriendIds: selectedUids,
     );
   }
 }

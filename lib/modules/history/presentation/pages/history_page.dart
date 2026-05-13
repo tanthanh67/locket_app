@@ -5,7 +5,9 @@ import 'package:locket_app/modules/feed/presentation/components/filter_friend_bu
 import 'package:locket_app/modules/feed/presentation/data/feed_items.dart';
 
 class HistoryPage extends StatelessWidget {
-  const HistoryPage({super.key});
+  final List<FeedItem> items;
+
+  const HistoryPage({super.key, required this.items});
 
   @override
   Widget build(BuildContext context) {
@@ -33,14 +35,14 @@ class HistoryPage extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                 child: GridView.builder(
                   physics: const BouncingScrollPhysics(),
-                  itemCount: feedItems.length,
+                  itemCount: items.length,
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
                     crossAxisSpacing: 6,
                     mainAxisSpacing: 6,
                   ),
                   itemBuilder: (context, index) {
-                    final item = feedItems[index];
+                    final item = items[index];
                     return _HistoryTile(
                       imageUrl: item.imageUrl,
                       onTap: () => Navigator.of(context).pop(index),

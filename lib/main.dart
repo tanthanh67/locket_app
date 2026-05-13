@@ -5,6 +5,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:locket_app/modules/friends/data/repositories/friends_repository_impl.dart';
 import 'package:locket_app/modules/friends/domain/repository/friends_repository.dart';
 import 'package:locket_app/modules/friends/presentation/application/cubit/friends_cubit.dart';
+import 'package:locket_app/modules/feed/data/repositories/feed_repository_impl.dart';
+import 'package:locket_app/modules/feed/domain/repository/feed_repository.dart';
+import 'package:locket_app/modules/feed/presentation/application/cubit/feed_cubit.dart';
 
 // Core
 import 'core/constants/app_colors.dart';
@@ -36,6 +39,7 @@ void main() async {
   // Khởi tạo repo camera
   final cameraRepo = CameraRepositoryImpl(cloudinaryService, geminiService);
   final friendsRepo = FriendsRepositoryImpl();
+  final feedRepo = FeedRepositoryImpl();
 
   runApp(
     MultiRepositoryProvider(
@@ -45,6 +49,7 @@ void main() async {
         // SỬA Ở ĐÂY: Dùng kiểu CameraRepository thay vì CameraRepositoryImpl
         RepositoryProvider<CameraRepository>.value(value: cameraRepo),
         RepositoryProvider<FriendsRepository>.value(value: friendsRepo),
+        RepositoryProvider<FeedRepository>.value(value: feedRepo),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -57,6 +62,10 @@ void main() async {
           ),
           BlocProvider(
             create: (context) => FriendsCubit(friendsRepo)..initFriendsModule(),
+          ),
+          BlocProvider(
+            create: (context) =>
+                FeedCubit(context.read<FeedRepository>())..watchFeed(),
           ),
         ],
         child: const MyApp(),

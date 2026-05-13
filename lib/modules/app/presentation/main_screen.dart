@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:locket_app/modules/camera/presentation/pages/camera_page.dart';
 import 'package:locket_app/modules/feed/presentation/components/feed_top_bar.dart';
-import 'package:locket_app/modules/feed/presentation/data/feed_items.dart';
+import 'package:locket_app/modules/feed/presentation/application/cubit/feed_cubit.dart';
 import 'package:locket_app/modules/feed/presentation/pages/feed_page.dart';
 import 'package:locket_app/modules/friends/presentation/application/cubit/friends_cubit.dart';
 
@@ -73,19 +73,28 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildFeedTopBar() {
-    return FeedTopBar(
-      filterOptions: _friendFilterOptions,
-      selectedFilter: _selectedFriend,
-      onFilterChanged: (friend) {
-        setState(() {
-          _selectedFriend = friend;
-        });
+    return BlocBuilder<FeedCubit, FeedState>(
+      builder: (context, state) {
+        final options = _friendFilterOptions(state);
+        final selected = options.contains(_selectedFriend)
+            ? _selectedFriend
+            : 'All friends';
+
+        return FeedTopBar(
+          filterOptions: options,
+          selectedFilter: selected,
+          onFilterChanged: (friend) {
+            setState(() {
+              _selectedFriend = friend;
+            });
+          },
+        );
       },
     );
   }
 
-  List<String> get _friendFilterOptions {
-    final names = feedItems.map((item) => item.userName).toSet().toList()
+  List<String> _friendFilterOptions(FeedState state) {
+    final names = state.items.map((item) => item.userName).toSet().toList()
       ..sort();
     return ['All friends', ...names];
   }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:locket_app/modules/feed/presentation/components/bottom_nav.dart';
 import 'package:locket_app/modules/feed/presentation/components/feed_area.dart';
+import 'package:locket_app/modules/feed/presentation/application/cubit/feed_cubit.dart';
 import 'package:locket_app/modules/feed/presentation/data/feed_items.dart';
 import 'package:locket_app/modules/history/presentation/pages/history_page.dart';
 
@@ -41,7 +43,7 @@ class _FeedPageState extends State<FeedPage> {
     if (oldWidget.selectedFriend != widget.selectedFriend &&
         _pageController.hasClients) {
       _pageController.jumpToPage(0);
-      final items = _filteredItems;
+      final items = _filteredItems(context.read<FeedCubit>().state.items);
       if (items.isNotEmpty) {
         _handleUserChanged(items.first.userName);
       }
@@ -50,41 +52,49 @@ class _FeedPageState extends State<FeedPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Column(
+    return BlocBuilder<FeedCubit, FeedState>(
+      builder: (context, state) {
+        final items = _filteredItems(state.items);
+
+        return Scaffold(
+          body: Stack(
             children: [
-              Expanded(
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: _handleFeedScroll,
-                  child: FeedArea(
-                    items: _filteredItems,
-                    onUserChanged: _handleUserChanged,
-                    controller: _pageController,
-                    highlightedIndex: _highlightedIndex,
+              Column(
+                children: [
+                  Expanded(
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: _handleFeedScroll,
+                      child: FeedArea(
+                        items: items,
+                        isLoading: state.status == FeedStatus.loading,
+                        errorMessage: state.errorMessage,
+                        onUserChanged: _handleUserChanged,
+                        controller: _pageController,
+                        highlightedIndex: _highlightedIndex,
+                      ),
+                    ),
                   ),
-                ),
+                  _buildCommentBar(),
+                  BottomNav(
+                    onHistoryTap: _openHistory,
+                    onCameraTap: _returnToCamera,
+                  ),
+                ],
               ),
-              _buildCommentBar(),
-              BottomNav(
-                onHistoryTap: _openHistory,
-                onCameraTap: _returnToCamera,
-              ),
+              if (_isReplying) _buildReplyOverlay(),
             ],
           ),
-          if (_isReplying) _buildReplyOverlay(),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  List<FeedItem> get _filteredItems {
+  List<FeedItem> _filteredItems(List<FeedItem> items) {
     if (widget.selectedFriend == 'All friends') {
-      return feedItems;
+      return items;
     }
 
-    return feedItems
+    return items
         .where((item) => item.userName == widget.selectedFriend)
         .toList();
   }
@@ -159,13 +169,19 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   Future<void> _openHistory() async {
-    final selectedIndex = await Navigator.of(
-      context,
-    ).push<int>(MaterialPageRoute(builder: (_) => const HistoryPage()));
+    final feedCubit = context.read<FeedCubit>();
+    final feedItems = feedCubit.state.items;
+    final selectedIndex = await Navigator.of(context).push<int>(
+      MaterialPageRoute(builder: (_) => HistoryPage(items: feedItems)),
+    );
 
-    final items = _filteredItems;
+    if (!mounted) {
+      return;
+    }
 
-    if (!mounted || selectedIndex == null || items.isEmpty) {
+    final items = _filteredItems(feedCubit.state.items);
+
+    if (selectedIndex == null || items.isEmpty) {
       return;
     }
 
