@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:locket_app/modules/feed/presentation/components/bottom_nav.dart';
-import 'package:locket_app/modules/feed/presentation/components/circle_button.dart';
 import 'package:locket_app/modules/feed/presentation/components/feed_area.dart';
-import 'package:locket_app/modules/feed/presentation/components/filter_friend_button.dart';
 import 'package:locket_app/modules/feed/presentation/data/feed_items.dart';
 import 'package:locket_app/modules/history/presentation/pages/history_page.dart';
 
 class FeedPage extends StatefulWidget {
-  const FeedPage({super.key});
+  final VoidCallback? onCameraTap;
+  final String selectedFriend;
+
+  const FeedPage({
+    super.key,
+    this.onCameraTap,
+    this.selectedFriend = 'All friends',
+  });
 
   @override
   State<FeedPage> createState() => _FeedPageState();
@@ -18,6 +23,7 @@ class _FeedPageState extends State<FeedPage> {
   final FocusNode _replyFocusNode = FocusNode();
   final PageController _pageController = PageController();
   bool _isReplying = false;
+  bool _isReturningToCamera = false;
   String _currentUser = 'John Doe';
   int? _highlightedIndex;
 
@@ -30,38 +36,42 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   @override
+  void didUpdateWidget(covariant FeedPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedFriend != widget.selectedFriend &&
+        _pageController.hasClients) {
+      _pageController.jumpToPage(0);
+      final items = _filteredItems;
+      if (items.isNotEmpty) {
+        _handleUserChanged(items.first.userName);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          SafeArea(
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 12,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      CircleButton(icon: Icons.person_outline_rounded),
-                      FilterFriendButton(),
-                      CircleButton(icon: Icons.chat_bubble_outline_rounded),
-                    ],
-                  ),
-                ),
-                Expanded(
+          Column(
+            children: [
+              Expanded(
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: _handleFeedScroll,
                   child: FeedArea(
+                    items: _filteredItems,
                     onUserChanged: _handleUserChanged,
                     controller: _pageController,
                     highlightedIndex: _highlightedIndex,
                   ),
                 ),
-                _buildCommentBar(),
-                BottomNav(onHistoryTap: _openHistory),
-              ],
-            ),
+              ),
+              _buildCommentBar(),
+              BottomNav(
+                onHistoryTap: _openHistory,
+                onCameraTap: _returnToCamera,
+              ),
+            ],
           ),
           if (_isReplying) _buildReplyOverlay(),
         ],
@@ -69,7 +79,19 @@ class _FeedPageState extends State<FeedPage> {
     );
   }
 
+  List<FeedItem> get _filteredItems {
+    if (widget.selectedFriend == 'All friends') {
+      return feedItems;
+    }
+
+    return feedItems
+        .where((item) => item.userName == widget.selectedFriend)
+        .toList();
+  }
+
   void _handleUserChanged(String userName) {
+    _isReturningToCamera = false;
+
     if (_currentUser == userName) {
       return;
     }
@@ -79,16 +101,75 @@ class _FeedPageState extends State<FeedPage> {
     });
   }
 
+  bool _handleFeedScroll(ScrollNotification notification) {
+    if (notification is OverscrollNotification) {
+      return _handleFeedOverscroll(notification);
+    }
+
+    if (notification is ScrollUpdateNotification) {
+      return _handleFeedPullDownUpdate(notification);
+    }
+
+    return false;
+  }
+
+  bool _handleFeedOverscroll(OverscrollNotification notification) {
+    final onFirstItem =
+        notification.metrics.pixels <= notification.metrics.minScrollExtent + 8;
+    final pullingDown = notification.overscroll < 0;
+
+    if (!_isReturningToCamera &&
+        onFirstItem &&
+        pullingDown &&
+        widget.onCameraTap != null) {
+      _returnToCamera();
+      return true;
+    }
+
+    return false;
+  }
+
+  bool _handleFeedPullDownUpdate(ScrollUpdateNotification notification) {
+    final dragDelta = notification.dragDetails?.delta.dy ?? 0;
+    final currentPage = _pageController.hasClients
+        ? (_pageController.page ?? _pageController.initialPage.toDouble())
+        : 0.0;
+    final onFirstItem =
+        currentPage <= 0.02 &&
+        notification.metrics.pixels <= notification.metrics.minScrollExtent + 8;
+
+    if (!_isReturningToCamera &&
+        onFirstItem &&
+        dragDelta > 8 &&
+        widget.onCameraTap != null) {
+      _returnToCamera();
+      return true;
+    }
+
+    return false;
+  }
+
+  void _returnToCamera() {
+    _isReturningToCamera = true;
+    widget.onCameraTap?.call();
+
+    Future.delayed(const Duration(milliseconds: 420), () {
+      _isReturningToCamera = false;
+    });
+  }
+
   Future<void> _openHistory() async {
     final selectedIndex = await Navigator.of(
       context,
     ).push<int>(MaterialPageRoute(builder: (_) => const HistoryPage()));
 
-    if (!mounted || selectedIndex == null || feedItems.isEmpty) {
+    final items = _filteredItems;
+
+    if (!mounted || selectedIndex == null || items.isEmpty) {
       return;
     }
 
-    final safeIndex = selectedIndex.clamp(0, feedItems.length - 1).toInt();
+    final safeIndex = selectedIndex.clamp(0, items.length - 1).toInt();
 
     await _pageController.animateToPage(
       safeIndex,
@@ -141,7 +222,7 @@ class _FeedPageState extends State<FeedPage> {
                   border: Border.all(color: Colors.white30),
                 ),
                 child: const Text(
-                  'Gửi tin nhắn...',
+                  'Send a message...',
                   style: TextStyle(color: Colors.white54),
                 ),
               ),
@@ -219,7 +300,7 @@ class _FeedPageState extends State<FeedPage> {
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _handleSend(),
                 decoration: InputDecoration(
-                  hintText: 'Trả lời $_currentUser...',
+                  hintText: 'Reply to $_currentUser...',
                   hintStyle: const TextStyle(color: Colors.white54),
                   border: InputBorder.none,
                   isDense: true,

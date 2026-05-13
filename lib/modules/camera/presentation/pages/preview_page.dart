@@ -19,6 +19,12 @@ class _PreviewPageState extends State<PreviewPage> {
   List<String> selectedUids = [];
 
   @override
+  void dispose() {
+    _captionController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return BlocListener<CameraCubit, CameraState>(
       listener: (context, state) {
@@ -36,10 +42,13 @@ class _PreviewPageState extends State<PreviewPage> {
               icon: const Icon(Icons.download, color: Colors.white),
               onPressed: () async {
                 await ImageGallerySaverPlus.saveFile(widget.path);
-                if (mounted)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Lưu thành công!")),
-                  );
+                if (!context.mounted) {
+                  return;
+                }
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Saved successfully!")),
+                );
               },
             ),
           ],
@@ -61,13 +70,13 @@ class _PreviewPageState extends State<PreviewPage> {
                 controller: _captionController,
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
-                  hintText: "Thêm một tin nhắn...",
+                  hintText: "Add a message...",
                   hintStyle: TextStyle(color: Colors.white30),
                 ),
               ),
             ),
             const Text(
-              "Chọn người xem:",
+              "Choose viewers:",
               style: TextStyle(
                 color: Colors.yellow,
                 fontWeight: FontWeight.bold,
