@@ -5,12 +5,16 @@ class FeedArea extends StatefulWidget {
   const FeedArea({
     super.key,
     required this.items,
+    this.isLoading = false,
+    this.errorMessage,
     this.onUserChanged,
     this.controller,
     this.highlightedIndex,
   });
 
   final List<FeedItem> items;
+  final bool isLoading;
+  final String? errorMessage;
   final ValueChanged<String>? onUserChanged;
   final PageController? controller;
   final int? highlightedIndex;
@@ -22,6 +26,22 @@ class FeedArea extends StatefulWidget {
 class _FeedAreaState extends State<FeedArea> {
   @override
   Widget build(BuildContext context) {
+    if (widget.isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFFFD233)),
+      );
+    }
+
+    if (widget.errorMessage != null) {
+      return Center(
+        child: Text(
+          widget.errorMessage!,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white70),
+        ),
+      );
+    }
+
     if (widget.items.isEmpty) {
       return const Center(
         child: Text('No moments yet', style: TextStyle(color: Colors.white70)),
@@ -115,7 +135,13 @@ class _FeedAreaState extends State<FeedArea> {
           children: [
             CircleAvatar(
               radius: 16,
-              backgroundImage: NetworkImage(item.avatarUrl),
+              backgroundColor: Colors.white24,
+              backgroundImage: item.avatarUrl.isEmpty
+                  ? null
+                  : NetworkImage(item.avatarUrl),
+              child: item.avatarUrl.isEmpty
+                  ? const Icon(Icons.person, color: Colors.white70, size: 18)
+                  : null,
             ),
             const SizedBox(width: 8),
             Text(
