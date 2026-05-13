@@ -8,6 +8,7 @@ class FeedArea extends StatefulWidget {
     this.isLoading = false,
     this.errorMessage,
     this.onUserChanged,
+    this.onItemChanged,
     this.controller,
     this.highlightedIndex,
   });
@@ -16,6 +17,7 @@ class FeedArea extends StatefulWidget {
   final bool isLoading;
   final String? errorMessage;
   final ValueChanged<String>? onUserChanged;
+  final ValueChanged<FeedItem>? onItemChanged;
   final PageController? controller;
   final int? highlightedIndex;
 
@@ -65,13 +67,18 @@ class _FeedAreaState extends State<FeedArea> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.items.isNotEmpty) {
-        widget.onUserChanged?.call(widget.items.first.userName);
+        _notifyCurrentItem(widget.items.first);
       }
     });
   }
 
   void _handlePageChanged(int index) {
-    widget.onUserChanged?.call(widget.items[index].userName);
+    _notifyCurrentItem(widget.items[index]);
+  }
+
+  void _notifyCurrentItem(FeedItem item) {
+    widget.onUserChanged?.call(item.userName);
+    widget.onItemChanged?.call(item);
   }
 
   Widget _buildFeedItem(FeedItem item, int index) {
