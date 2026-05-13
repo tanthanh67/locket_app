@@ -8,6 +8,7 @@ class FeedTopBar extends StatelessWidget {
   final IconData centerIcon;
   final List<String> filterOptions;
   final String selectedFilter;
+  final VoidCallback? onCenterTap;
   final ValueChanged<String>? onFilterChanged;
 
   const FeedTopBar({
@@ -18,6 +19,7 @@ class FeedTopBar extends StatelessWidget {
     this.centerIcon = Icons.group_rounded,
     this.filterOptions = const ['All friends'],
     this.selectedFilter = 'All friends',
+    this.onCenterTap,
     this.onFilterChanged,
   });
 
@@ -37,6 +39,7 @@ class FeedTopBar extends StatelessWidget {
             icon: centerIcon,
             options: filterOptions,
             canOpen: canOpenFilter,
+            onTap: onCenterTap,
             onChanged: onFilterChanged,
           ),
           CircleButton(
@@ -54,6 +57,7 @@ class _CenterPill extends StatefulWidget {
   final IconData icon;
   final List<String> options;
   final bool canOpen;
+  final VoidCallback? onTap;
   final ValueChanged<String>? onChanged;
 
   const _CenterPill({
@@ -61,6 +65,7 @@ class _CenterPill extends StatefulWidget {
     required this.icon,
     required this.options,
     required this.canOpen,
+    this.onTap,
     this.onChanged,
   });
 
@@ -77,7 +82,7 @@ class _CenterPillState extends State<_CenterPill> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: widget.canOpen ? _openMenu : null,
+        onTap: widget.canOpen ? _openMenu : widget.onTap,
         borderRadius: BorderRadius.circular(28),
         child: Container(
           key: _anchorKey,

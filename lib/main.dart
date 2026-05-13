@@ -61,11 +61,11 @@ void main() async {
             create: (context) => CameraCubit(context.read<CameraRepository>()),
           ),
           BlocProvider(
-            create: (context) => FriendsCubit(friendsRepo)..initFriendsModule(),
+            create: (context) =>
+                FriendsCubit(context.read<FriendsRepository>()),
           ),
           BlocProvider(
-            create: (context) =>
-                FeedCubit(context.read<FeedRepository>())..watchFeed(),
+            create: (context) => FeedCubit(context.read<FeedRepository>()),
           ),
         ],
         child: const MyApp(),

@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../core/domain/entities/user_entity.dart';
 import '../../../domain/repository/friends_repository.dart';
 
@@ -16,6 +16,8 @@ class FriendsCubit extends Cubit<FriendsState> {
   // Lắng nghe dữ liệu bạn bè và lời mời theo thời gian thực
   void initFriendsModule() {
     emit(FriendsLoading());
+    _friendsSub?.cancel();
+    _requestsSub?.cancel();
 
     // Lắng nghe danh sách bạn bè
     _friendsSub = _repository.getFriendsList().listen((friends) {

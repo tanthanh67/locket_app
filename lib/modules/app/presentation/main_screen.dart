@@ -5,6 +5,7 @@ import 'package:locket_app/modules/feed/presentation/components/feed_top_bar.dar
 import 'package:locket_app/modules/feed/presentation/application/cubit/feed_cubit.dart';
 import 'package:locket_app/modules/feed/presentation/pages/feed_page.dart';
 import 'package:locket_app/modules/friends/presentation/application/cubit/friends_cubit.dart';
+import 'package:locket_app/modules/friends/presentation/pages/friends_page.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -67,7 +68,7 @@ class _MainScreenState extends State<MainScreen> {
         final count = state is FriendsLoaded ? state.myFriends.length : 0;
         final label = '$count ${count == 1 ? 'Friend' : 'Friends'}';
 
-        return FeedTopBar(centerLabel: label);
+        return FeedTopBar(centerLabel: label, onCenterTap: _openFriends);
       },
     );
   }
@@ -113,5 +114,11 @@ class _MainScreenState extends State<MainScreen> {
       duration: const Duration(milliseconds: 320),
       curve: Curves.easeOutCubic,
     );
+  }
+
+  Future<void> _openFriends() {
+    return Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const FriendsPage()));
   }
 }
