@@ -16,6 +16,11 @@ abstract class AuthRepository {
   // Đăng xuất
   Future<void> signOut();
 
+  Future<User> updateAccount({
+    required String displayName,
+    required String username,
+  });
+
   // Stream lắng nghe trạng thái đăng nhập (dùng cho Auto Login)
   Stream<User?> get authStateChanges;
 }

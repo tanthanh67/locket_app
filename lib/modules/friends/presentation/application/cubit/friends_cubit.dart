@@ -34,6 +34,7 @@ class FriendsCubit extends Cubit<FriendsState> {
     List<UserEntity>? newFriends,
     List<Map<String, dynamic>>? newRequests,
     List<UserEntity>? searchResults, // Thêm tham số này vào hàm helper
+    List<String>? sentRequestIds,
   }) {
     if (state is FriendsLoaded) {
       emit(
@@ -41,6 +42,7 @@ class FriendsCubit extends Cubit<FriendsState> {
           myFriends: newFriends,
           pendingRequests: newRequests,
           searchResults: searchResults, // Truyền vào copyWith
+          sentRequestIds: sentRequestIds,
         ),
       );
     } else {
@@ -49,6 +51,7 @@ class FriendsCubit extends Cubit<FriendsState> {
           myFriends: newFriends ?? [],
           pendingRequests: newRequests ?? [],
           searchResults: searchResults ?? [],
+          sentRequestIds: sentRequestIds ?? [],
         ),
       );
     }
@@ -68,11 +71,49 @@ class FriendsCubit extends Cubit<FriendsState> {
   }
 
   Future<void> sendRequest(String targetUid) async {
-    await _repository.sendFriendRequest(targetUid);
+    try {
+      await _repository.sendFriendRequest(targetUid);
+
+      if (state is FriendsLoaded) {
+        final currentState = state as FriendsLoaded;
+        _updateState(
+          sentRequestIds: {...currentState.sentRequestIds, targetUid}.toList(),
+        );
+      }
+    } catch (e) {
+      emit(FriendsError(e.toString()));
+    }
   }
 
   Future<void> accept(String requestId, String senderId) async {
-    await _repository.acceptFriendRequest(requestId, senderId);
+    try {
+      await _repository.acceptFriendRequest(requestId, senderId);
+      _removePendingRequest(requestId);
+    } catch (e) {
+      emit(FriendsError(e.toString()));
+    }
+  }
+
+  Future<void> deleteRequest(String requestId) async {
+    try {
+      await _repository.deleteFriendRequest(requestId);
+      _removePendingRequest(requestId);
+    } catch (e) {
+      emit(FriendsError(e.toString()));
+    }
+  }
+
+  void _removePendingRequest(String requestId) {
+    if (state is! FriendsLoaded) {
+      return;
+    }
+
+    final currentState = state as FriendsLoaded;
+    _updateState(
+      newRequests: currentState.pendingRequests
+          .where((request) => request['id'] != requestId)
+          .toList(),
+    );
   }
 
   @override

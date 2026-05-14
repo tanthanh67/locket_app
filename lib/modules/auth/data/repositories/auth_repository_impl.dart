@@ -65,6 +65,27 @@ class AuthRepositoryImpl implements AuthRepository {
     await _auth.signOut();
   }
 
+  @override
+  Future<User> updateAccount({
+    required String displayName,
+    required String username,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No signed in user.');
+    }
+
+    await user.updateDisplayName(displayName);
+    await _firestore.collection('users').doc(user.uid).set({
+      'displayName': displayName,
+      'username': username,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    await user.reload();
+    return _auth.currentUser ?? user;
+  }
+
   // Hàm bổ trợ để xử lý các lỗi thường gặp của Firebase
   String _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {

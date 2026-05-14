@@ -63,6 +63,17 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  Future<void> updateAccount({
+    required String displayName,
+    required String username,
+  }) async {
+    final updatedUser = await _repo.updateAccount(
+      displayName: displayName,
+      username: username,
+    );
+    emit(Authenticated(updatedUser));
+  }
+
   // Kiểm tra xem đã xác thực chưa
   Future<void> checkEmailVerification() async {
     bool isVerified = await _repo.checkEmailVerified();

@@ -36,13 +36,17 @@ class CameraCubit extends Cubit<CameraState> {
         finalCaption = await _repository.getAiCaption(localPath);
       }
 
+      final visibleTo = selectedFriendIds.isEmpty
+          ? await _repository.getMyFriendIds()
+          : selectedFriendIds;
+
       // 2. Tạo Entity
       final post = PostEntity(
         senderId: FirebaseAuth.instance.currentUser!.uid,
         mediaUrl: url,
         caption: finalCaption,
         type: isVideo ? 'video' : 'image',
-        visibleTo: selectedFriendIds,
+        visibleTo: visibleTo,
         createdAt: DateTime.now(),
       );
 
