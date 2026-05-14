@@ -7,6 +7,8 @@ class FeedItem {
   final String userName;
   final String avatarUrl;
   final String timeAgo;
+  final bool isMine;
+  final List<FeedActivity> activities;
 
   const FeedItem({
     required this.id,
@@ -15,6 +17,8 @@ class FeedItem {
     required this.userName,
     required this.avatarUrl,
     required this.timeAgo,
+    required this.isMine,
+    this.activities = const [],
   });
 
   factory FeedItem.fromEntity(FeedPostEntity entity) {
@@ -22,11 +26,27 @@ class FeedItem {
       id: entity.post.id ?? '',
       imageUrl: entity.post.mediaUrl,
       caption: entity.post.caption,
-      userName: entity.senderName,
+      userName: entity.isMine ? 'You' : entity.senderName,
       avatarUrl: entity.senderAvatarUrl,
       timeAgo: _timeAgo(entity.post.createdAt),
+      isMine: entity.isMine,
+      activities: entity.reactions
+          .map(
+            (reaction) => FeedActivity(
+              userName: reaction.userName,
+              emoji: reaction.emoji,
+            ),
+          )
+          .toList(),
     );
   }
+}
+
+class FeedActivity {
+  final String userName;
+  final String emoji;
+
+  const FeedActivity({required this.userName, required this.emoji});
 }
 
 String _timeAgo(DateTime dateTime) {

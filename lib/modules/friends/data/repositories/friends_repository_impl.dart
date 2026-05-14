@@ -40,19 +40,28 @@ class FriendsRepositoryImpl implements FriendsRepository {
   @override
   Future<void> acceptFriendRequest(String requestId, String senderId) async {
     final myUid = _auth.currentUser!.uid;
+    final batch = _firestore.batch();
+    final requestRef = _firestore.collection('friend_requests').doc(requestId);
+    final myUserRef = _firestore.collection('users').doc(myUid);
+    final senderRef = _firestore.collection('users').doc(senderId);
 
     // 1. Cập nhật trạng thái lời mời
-    await _firestore.collection('friend_requests').doc(requestId).update({
-      'status': 'accepted',
-    });
+    batch.update(requestRef, {'status': 'accepted'});
 
     // 2. Thêm nhau vào danh sách bạn bè (Atomic update)
-    await _firestore.collection('users').doc(myUid).update({
+    batch.update(myUserRef, {
       'friends': FieldValue.arrayUnion([senderId]),
     });
-    await _firestore.collection('users').doc(senderId).update({
+    batch.update(senderRef, {
       'friends': FieldValue.arrayUnion([myUid]),
     });
+
+    await batch.commit();
+  }
+
+  @override
+  Future<void> deleteFriendRequest(String requestId) async {
+    await _firestore.collection('friend_requests').doc(requestId).delete();
   }
 
   @override

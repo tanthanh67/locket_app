@@ -27,6 +27,7 @@ class _FeedPageState extends State<FeedPage> {
   bool _isReplying = false;
   bool _isReturningToCamera = false;
   String _currentUser = 'John Doe';
+  FeedItem? _currentItem;
   int? _highlightedIndex;
 
   @override
@@ -45,7 +46,7 @@ class _FeedPageState extends State<FeedPage> {
       _pageController.jumpToPage(0);
       final items = _filteredItems(context.read<FeedCubit>().state.items);
       if (items.isNotEmpty) {
-        _handleUserChanged(items.first.userName);
+        _handleItemChanged(items.first);
       }
     }
   }
@@ -69,12 +70,13 @@ class _FeedPageState extends State<FeedPage> {
                         isLoading: state.status == FeedStatus.loading,
                         errorMessage: state.errorMessage,
                         onUserChanged: _handleUserChanged,
+                        onItemChanged: _handleItemChanged,
                         controller: _pageController,
                         highlightedIndex: _highlightedIndex,
                       ),
                     ),
                   ),
-                  _buildCommentBar(),
+                  _buildFeedActions(items),
                   BottomNav(
                     onHistoryTap: _openHistory,
                     onCameraTap: _returnToCamera,
@@ -108,6 +110,19 @@ class _FeedPageState extends State<FeedPage> {
 
     setState(() {
       _currentUser = userName;
+    });
+  }
+
+  void _handleItemChanged(FeedItem item) {
+    _isReturningToCamera = false;
+
+    if (_currentItem?.id == item.id && _currentUser == item.userName) {
+      return;
+    }
+
+    setState(() {
+      _currentItem = item;
+      _currentUser = item.userName;
     });
   }
 
@@ -218,7 +233,38 @@ class _FeedPageState extends State<FeedPage> {
     });
   }
 
-  Widget _buildCommentBar() {
+  Widget _buildFeedActions(List<FeedItem> items) {
+    final currentId = _currentItem?.id;
+    final item =
+        _findItemById(items, currentId) ??
+        (items.isNotEmpty ? items.first : null);
+
+    if (item == null) {
+      return const SizedBox(height: 8);
+    }
+
+    if (item.isMine) {
+      return _buildActivityPanel(item);
+    }
+
+    return _buildCommentBar(item);
+  }
+
+  FeedItem? _findItemById(List<FeedItem> items, String? id) {
+    if (id == null) {
+      return null;
+    }
+
+    for (final item in items) {
+      if (item.id == id) {
+        return item;
+      }
+    }
+
+    return null;
+  }
+
+  Widget _buildCommentBar(FeedItem item) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: Row(
@@ -245,14 +291,73 @@ class _FeedPageState extends State<FeedPage> {
             ),
           ),
           const SizedBox(width: 8),
-          const Text('🤍', style: TextStyle(fontSize: 24)),
+          _ReactionButton(emoji: '🤍', onTap: () => _react(item, '🤍')),
           const SizedBox(width: 4),
-          const Text('🔥', style: TextStyle(fontSize: 24)),
+          _ReactionButton(emoji: '🔥', onTap: () => _react(item, '🔥')),
           const SizedBox(width: 4),
-          const Text('😍', style: TextStyle(fontSize: 24)),
+          _ReactionButton(emoji: '😍', onTap: () => _react(item, '😍')),
           const SizedBox(width: 4),
           const Icon(Icons.add_reaction_outlined, color: Colors.white70),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActivityPanel(FeedItem item) {
+    final activities = item.activities;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 360),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white12,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: activities.isEmpty
+              ? const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.auto_awesome, color: Colors.white70, size: 18),
+                    SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        'Chưa có hoạt động nào!',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Wrap(
+                  alignment: WrapAlignment.center,
+                  runSpacing: 8,
+                  spacing: 8,
+                  children: activities.map(_buildActivityChip).toList(),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActivityChip(FeedActivity activity) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(
+        '${activity.userName} ${activity.emoji}',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -377,5 +482,32 @@ class _FeedPageState extends State<FeedPage> {
 
     _replyController.clear();
     _closeReply();
+  }
+
+  Future<void> _react(FeedItem item, String emoji) async {
+    if (item.id.isEmpty || item.isMine) {
+      return;
+    }
+
+    await context.read<FeedCubit>().reactToPost(item.id, emoji);
+  }
+}
+
+class _ReactionButton extends StatelessWidget {
+  final String emoji;
+  final VoidCallback onTap;
+
+  const _ReactionButton({required this.emoji, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Text(emoji, style: const TextStyle(fontSize: 24)),
+      ),
+    );
   }
 }

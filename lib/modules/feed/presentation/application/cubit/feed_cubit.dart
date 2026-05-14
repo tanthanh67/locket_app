@@ -37,6 +37,10 @@ class FeedCubit extends Cubit<FeedState> {
     );
   }
 
+  Future<void> reactToPost(String postId, String emoji) {
+    return _repository.reactToPost(postId, emoji);
+  }
+
   @override
   Future<void> close() {
     _subscription?.cancel();

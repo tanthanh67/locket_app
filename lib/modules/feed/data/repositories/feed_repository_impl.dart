@@ -34,18 +34,45 @@ class FeedRepositoryImpl implements FeedRepository {
             return const <FeedPostEntity>[];
           }
 
-          final senderIds = posts.map((post) => post.senderId).toSet().toList();
-          final users = await _loadUsers(senderIds);
+          final userIds = <String>{
+            for (final post in posts) post.senderId,
+            for (final post in posts) ...post.reactions.keys,
+          }.toList();
+          final users = await _loadUsers(userIds);
 
           return posts.map((post) {
             final user = users[post.senderId];
+            final reactions = post.reactions.entries
+                .where((entry) => entry.key != uid)
+                .map((entry) {
+                  final reactionUser = users[entry.key];
+                  return FeedReactionEntity(
+                    userId: entry.key,
+                    userName:
+                        reactionUser?['displayName'] as String? ?? 'A friend',
+                    emoji: entry.value,
+                  );
+                })
+                .toList();
+
             return FeedPostEntity(
               post: post,
               senderName: user?['displayName'] as String? ?? 'Unknown',
               senderAvatarUrl: user?['photoUrl'] as String? ?? '',
+              isMine: post.senderId == uid,
+              reactions: reactions,
             );
           }).toList();
         });
+  }
+
+  @override
+  Future<void> reactToPost(String postId, String emoji) {
+    final uid = _auth.currentUser!.uid;
+
+    return _firestore.collection('posts').doc(postId).update({
+      'reactions.$uid': emoji,
+    });
   }
 
   PostEntity _postFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
