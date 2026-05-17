@@ -20,10 +20,11 @@ class NotificationsPage extends StatelessWidget {
             const SizedBox(height: 28),
             const ProfileToggleCard(
               rows: [
-                ProfileToggleRow(
+                ProfileStoredToggleRow(
                   icon: Icons.notifications_rounded,
                   title: 'Push notifications',
                   subtitle: 'Enabled in iOS settings',
+                  settingPath: 'notificationSettings.pushNotifications',
                 ),
               ],
             ),
@@ -32,21 +33,25 @@ class NotificationsPage extends StatelessWidget {
             const SizedBox(height: 10),
             const ProfileToggleCard(
               rows: [
-                ProfileToggleRow(
+                ProfileStoredToggleRow(
                   icon: Icons.photo_rounded,
                   title: 'New photos',
+                  settingPath: 'notificationSettings.newPhotos',
                 ),
-                ProfileToggleRow(
+                ProfileStoredToggleRow(
                   icon: Icons.favorite_rounded,
                   title: 'Reactions',
+                  settingPath: 'notificationSettings.reactions',
                 ),
-                ProfileToggleRow(
+                ProfileStoredToggleRow(
                   icon: Icons.chat_bubble_rounded,
                   title: 'Replies & chats',
+                  settingPath: 'notificationSettings.repliesAndChats',
                 ),
-                ProfileToggleRow(
+                ProfileStoredToggleRow(
                   icon: Icons.person_add_alt_1_rounded,
                   title: 'Friend requests',
+                  settingPath: 'notificationSettings.friendRequests',
                 ),
               ],
             ),
@@ -55,9 +60,11 @@ class NotificationsPage extends StatelessWidget {
             const SizedBox(height: 10),
             const ProfileToggleCard(
               rows: [
-                ProfileToggleRow(
+                ProfileStoredToggleRow(
                   icon: Icons.nightlight_round,
                   title: 'Do not disturb',
+                  settingPath: 'notificationSettings.doNotDisturb',
+                  defaultValue: false,
                 ),
                 ProfileToggleRow(
                   icon: Icons.schedule_rounded,
