@@ -52,6 +52,20 @@ class WaitingVerificationPage extends StatelessWidget {
                 style: TextStyle(color: AppColors.primary),
               ),
             ),
+
+            const SizedBox(height: 8),
+
+            TextButton.icon(
+              onPressed: () => context.read<AuthCubit>().logout(),
+              icon: const Icon(
+                Icons.arrow_back_rounded,
+                color: AppColors.textGrey,
+              ),
+              label: const Text(
+                "Back to edit email",
+                style: TextStyle(color: AppColors.textGrey),
+              ),
+            ),
           ],
         ),
       ),

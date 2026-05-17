@@ -1,6 +1,6 @@
-import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:locket_app/core/domain/entities/post_entity.dart';
 import '../../../domain/repository/camera_repository.dart';
 
@@ -27,11 +27,18 @@ class CameraCubit extends Cubit<CameraState> {
 
       // 1. Upload & Lấy AI Caption (nếu cần) thông qua Repository
       final url = await _repository.uploadMedia(localPath, isVideo);
+      if (url.isEmpty) {
+        throw Exception('Upload image failed');
+      }
 
       String finalCaption = manualCaption;
       if (finalCaption.isEmpty && !isVideo) {
         finalCaption = await _repository.getAiCaption(localPath);
       }
+
+      final visibleTo = selectedFriendIds.isEmpty
+          ? await _repository.getMyFriendIds()
+          : selectedFriendIds;
 
       // 2. Tạo Entity
       final post = PostEntity(
@@ -39,7 +46,7 @@ class CameraCubit extends Cubit<CameraState> {
         mediaUrl: url,
         caption: finalCaption,
         type: isVideo ? 'video' : 'image',
-        visibleTo: selectedFriendIds,
+        visibleTo: visibleTo,
         createdAt: DateTime.now(),
       );
 

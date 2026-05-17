@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../core/domain/entities/user_entity.dart';
 import '../../../../core/domain/entities/post_entity.dart';
 import '../../../../core/services/cloudinary_service.dart';
 import '../../../../core/services/gemini_service.dart';
@@ -40,5 +41,34 @@ class CameraRepositoryImpl implements CameraRepository {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final doc = await _firestore.collection('users').doc(uid).get();
     return List<String>.from(doc.data()?['friends'] ?? []);
+  }
+
+  @override
+  Future<List<UserEntity>> getMyFriends() async {
+    final friendIds = await getMyFriendIds();
+    final friends = <UserEntity>[];
+
+    for (var i = 0; i < friendIds.length; i += 10) {
+      final chunk = friendIds.skip(i).take(10).toList();
+      final snapshot = await _firestore
+          .collection('users')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+
+      friends.addAll(
+        snapshot.docs.map((doc) {
+          final data = doc.data();
+          return UserEntity(
+            uid: doc.id,
+            displayName: data['displayName'] ?? '',
+            email: data['email'] ?? '',
+            photoUrl: data['photoUrl'] ?? '',
+            friends: List<String>.from(data['friends'] ?? []),
+          );
+        }),
+      );
+    }
+
+    return friends;
   }
 }

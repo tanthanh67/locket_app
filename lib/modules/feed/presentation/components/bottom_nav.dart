@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 class BottomNav extends StatelessWidget {
-  const BottomNav({super.key});
+  final VoidCallback? onHistoryTap;
+  final VoidCallback? onCameraTap;
+
+  const BottomNav({super.key, this.onHistoryTap, this.onCameraTap});
 
   @override
   Widget build(BuildContext context) {
@@ -11,21 +14,42 @@ class BottomNav extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Grid 2x2 icon
-          Icon(Icons.grid_view_rounded, color: Colors.white70, size: 28),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onHistoryTap,
+              borderRadius: BorderRadius.circular(20),
+              child: const Padding(
+                padding: EdgeInsets.all(6),
+                child: Icon(
+                  Icons.grid_view_rounded,
+                  color: Colors.white70,
+                  size: 28,
+                ),
+              ),
+            ),
+          ),
 
           // Nút chụp / đăng story (có viền vàng)
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.amber, width: 3),
-            ),
-            child: Container(
-              margin: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onCameraTap,
+              customBorder: const CircleBorder(),
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.amber, width: 3),
+                ),
+                child: Container(
+                  margin: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                ),
               ),
             ),
           ),

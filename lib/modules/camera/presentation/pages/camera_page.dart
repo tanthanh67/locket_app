@@ -7,7 +7,10 @@ import '../application/cubit/camera_cubit.dart';
 import 'preview_page.dart';
 
 class CameraPage extends StatefulWidget {
-  const CameraPage({super.key});
+  final VoidCallback? onShowFeed;
+
+  const CameraPage({super.key, this.onShowFeed});
+
   @override
   State<CameraPage> createState() => _CameraPageState();
 }
@@ -22,16 +25,32 @@ class _CameraPageState extends State<CameraPage> {
     _initCamera();
   }
 
-  void _initCamera() async {
+  Future<void> _initCamera() async {
+    final previousController = _controller;
+    _controller = null;
+    if (mounted) {
+      setState(() {});
+    }
+    await previousController?.dispose();
+
     final cameras = await availableCameras();
+    final preferredDirection = _isFront
+        ? CameraLensDirection.front
+        : CameraLensDirection.back;
     final camera = cameras.firstWhere(
-      (c) =>
-          c.lensDirection ==
-          (_isFront ? CameraLensDirection.front : CameraLensDirection.back),
+      (c) => c.lensDirection == preferredDirection,
+      orElse: () => cameras.first,
     );
-    _controller = CameraController(camera, ResolutionPreset.high);
-    await _controller!.initialize();
-    if (mounted) setState(() {});
+
+    final controller = CameraController(camera, ResolutionPreset.high);
+    await controller.initialize();
+    if (!mounted) {
+      await controller.dispose();
+      return;
+    }
+
+    _controller = controller;
+    setState(() {});
   }
 
   @override
@@ -48,28 +67,69 @@ class _CameraPageState extends State<CameraPage> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(),
-            const SizedBox(height: 20),
-            _buildPreview(),
-            const Spacer(),
-            _buildCaptureControls(),
-            const SizedBox(height: 20),
-            _buildHistoryIndicator(),
-          ],
-        ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final height = constraints.maxHeight;
+          final previewSide = (constraints.maxWidth - 4)
+              .clamp(280.0, height * 0.56)
+              .toDouble();
+          final topGap = (height * 0.145).clamp(108.0, 150.0);
+          final controlsGap = (height * 0.095).clamp(72.0, 116.0);
+          final historyGap = (height * 0.11).clamp(84.0, 140.0);
+
+          return Column(
+            children: [
+              SizedBox(height: topGap),
+              _buildPreview(previewSide),
+              SizedBox(height: controlsGap),
+              _buildCaptureControls(),
+              SizedBox(height: historyGap),
+              _buildHistoryIndicator(),
+              const Spacer(),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildPreview() {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(40),
-        child: CameraPreview(_controller!),
+  Widget _buildPreview(double side) {
+    final previewSize = _controller!.value.previewSize;
+    final previewWidth = previewSize?.height ?? 1;
+    final previewHeight = previewSize?.width ?? 1;
+
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        final velocity = details.primaryVelocity ?? 0;
+        if (velocity < -350) {
+          widget.onShowFeed?.call();
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: SizedBox.square(
+          dimension: side,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(48),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: ClipRect(
+                    child: FittedBox(
+                      fit: BoxFit.cover,
+                      child: SizedBox(
+                        width: previewWidth,
+                        height: previewHeight,
+                        child: CameraPreview(_controller!),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(top: 28, left: 28, child: _buildFlashButton()),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -77,50 +137,75 @@ class _CameraPageState extends State<CameraPage> {
   Widget _buildCaptureControls() {
     return BlocBuilder<CameraCubit, CameraState>(
       builder: (context, state) {
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: const Icon(
-                Icons.photo_library,
-                color: Colors.white,
-                size: 30,
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 58),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(
+                  Icons.photo_library,
+                  color: Colors.white,
+                  size: 30,
+                ),
+                onPressed: () async {
+                  final file = await ImagePicker().pickImage(
+                    source: ImageSource.gallery,
+                  );
+                  if (file != null && context.mounted) {
+                    context.read<CameraCubit>().setMode(CameraAppMode.photo);
+                    _toPreview(file.path, false);
+                  }
+                },
               ),
-              onPressed: () async {
-                final file = await ImagePicker().pickImage(
-                  source: ImageSource.gallery,
-                );
-                if (file != null && mounted) _toPreview(file.path, false);
-              },
-            ),
-            _buildMainButton(state),
-            IconButton(
-              icon: const Icon(Icons.cached, color: Colors.white, size: 30),
-              onPressed: () {
-                setState(() => _isFront = !_isFront);
-                _initCamera();
-              },
-            ),
-          ],
+              _buildMainButton(state),
+              IconButton(
+                icon: const Icon(Icons.cached, color: Colors.white, size: 30),
+                onPressed: () {
+                  setState(() => _isFront = !_isFront);
+                  _initCamera();
+                },
+              ),
+            ],
+          ),
         );
       },
+    );
+  }
+
+  Widget _buildFlashButton() {
+    return Container(
+      width: 54,
+      height: 54,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.28),
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(Icons.flash_on_rounded, color: Colors.white, size: 30),
     );
   }
 
   Widget _buildMainButton(CameraState state) {
     return GestureDetector(
       onTap: () async {
+        context.read<CameraCubit>().setMode(CameraAppMode.photo);
         final image = await _controller!.takePicture();
         _toPreview(image.path, false);
       },
       onLongPress: () async {
+        final cameraCubit = context.read<CameraCubit>();
         await _controller!.startVideoRecording();
-        context.read<CameraCubit>().setRecording(true);
+        cameraCubit.setRecording(true);
       },
       onLongPressUp: () async {
+        final cameraCubit = context.read<CameraCubit>();
         final video = await _controller!.stopVideoRecording();
-        context.read<CameraCubit>().setRecording(false);
-        context.read<CameraCubit>().setMode(CameraAppMode.video);
+        if (!mounted) {
+          return;
+        }
+
+        cameraCubit.setRecording(false);
+        cameraCubit.setMode(CameraAppMode.video);
         _toPreview(video.path, true);
       },
       child: Container(
@@ -129,11 +214,14 @@ class _CameraPageState extends State<CameraPage> {
           shape: BoxShape.circle,
           border: Border.all(color: Colors.yellow, width: 4),
           boxShadow: [
-            BoxShadow(color: Colors.yellow.withOpacity(0.3), blurRadius: 20),
+            BoxShadow(
+              color: Colors.yellow.withValues(alpha: 0.3),
+              blurRadius: 20,
+            ),
           ],
         ),
         child: CircleAvatar(
-          radius: 35,
+          radius: 44,
           backgroundColor: state.isRecording ? Colors.red : Colors.white,
         ),
       ),
@@ -155,60 +243,24 @@ class _CameraPageState extends State<CameraPage> {
     );
   }
 
-  Widget _buildTopBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildHistoryIndicator() {
+    return GestureDetector(
+      onTap: widget.onShowFeed,
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Avatar người dùng (Tạm thời là Icon)
-          const CircleAvatar(
-            radius: 20,
-            backgroundColor: Colors.white10,
-            child: Icon(Icons.person, color: Colors.white),
-          ),
-          // Nút danh sách bạn bè ở giữa
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white10,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.people, color: Colors.white, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  "47 Bạn bè", // Sau này dùng data thật
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Icon(Icons.keyboard_arrow_down, color: Colors.white),
-              ],
+          Text(
+            "History",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          // Nút Chat bên phải
-          const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 28),
+          SizedBox(width: 4),
+          Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white),
         ],
       ),
-    );
-  }
-
-  Widget _buildHistoryIndicator() {
-    return const Column(
-      children: [
-        Text(
-          "Lịch sử",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-          ),
-        ),
-        Icon(Icons.keyboard_arrow_down, color: Colors.white),
-      ],
     );
   }
 }

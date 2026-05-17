@@ -1,6 +1,6 @@
-import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../domain/repository/auth_repository.dart';
 
 part 'auth_state.dart';
@@ -61,6 +61,17 @@ class AuthCubit extends Cubit<AuthState> {
     } catch (e) {
       emit(AuthError(e.toString()));
     }
+  }
+
+  Future<void> updateAccount({
+    required String displayName,
+    required String username,
+  }) async {
+    final updatedUser = await _repo.updateAccount(
+      displayName: displayName,
+      username: username,
+    );
+    emit(Authenticated(updatedUser));
   }
 
   // Kiểm tra xem đã xác thực chưa

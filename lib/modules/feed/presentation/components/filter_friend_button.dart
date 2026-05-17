@@ -1,40 +1,24 @@
 import 'package:flutter/material.dart';
 
 class FilterFriendButton extends StatefulWidget {
-  const FilterFriendButton({super.key});
+  final List<String> options;
+  final ValueChanged<String>? onChanged;
+  final String selectedLabel;
+
+  const FilterFriendButton({
+    super.key,
+    this.options = const ['All friends'],
+    this.onChanged,
+    this.selectedLabel = 'All friends',
+  });
 
   @override
   State<FilterFriendButton> createState() => _FilterFriendButtonState();
 }
 
 class _FilterFriendButtonState extends State<FilterFriendButton> {
-  static const List<_FriendOption> _options = [
-    _FriendOption(label: 'All friends'),
-    _FriendOption(
-      label: 'Cong Tien',
-      avatarUrl:
-          'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-    ),
-    _FriendOption(
-      label: 'Tann Thanh',
-      avatarUrl:
-          'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80',
-    ),
-    _FriendOption(
-      label: 'NhatBon',
-      avatarUrl:
-          'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=200&q=80',
-    ),
-    _FriendOption(
-      label: 'DgGialai',
-      avatarUrl:
-          'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=200&q=80',
-    ),
-  ];
-
   final GlobalKey _anchorKey = GlobalKey();
   bool _isMenuOpen = false;
-  String _selectedLabel = 'All friends';
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +41,7 @@ class _FilterFriendButtonState extends State<FilterFriendButton> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _selectedLabel,
+                  widget.selectedLabel,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -97,7 +81,7 @@ class _FilterFriendButtonState extends State<FilterFriendButton> {
       _isMenuOpen = true;
     });
 
-    final selected = await showMenu<_FriendOption>(
+    final selected = await showMenu<String>(
       context: context,
       color: const Color(0xFF2A2A28),
       elevation: 6,
@@ -115,9 +99,9 @@ class _FilterFriendButtonState extends State<FilterFriendButton> {
         Offset.zero & overlay.size,
       ),
       constraints: const BoxConstraints(minWidth: 220),
-      items: _options
+      items: widget.options
           .map(
-            (option) => PopupMenuItem<_FriendOption>(
+            (option) => PopupMenuItem<String>(
               value: option,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               height: 48,
@@ -133,30 +117,25 @@ class _FilterFriendButtonState extends State<FilterFriendButton> {
 
     setState(() {
       _isMenuOpen = false;
-      if (selected != null) {
-        _selectedLabel = selected.label;
-      }
     });
+
+    if (selected != null) {
+      widget.onChanged?.call(selected);
+    }
   }
 
-  Widget _buildMenuRow(_FriendOption option) {
+  Widget _buildMenuRow(String option) {
     return Row(
       children: [
-        if (option.avatarUrl != null)
-          CircleAvatar(
-            radius: 14,
-            backgroundImage: NetworkImage(option.avatarUrl!),
-          )
-        else
-          const CircleAvatar(
-            radius: 14,
-            backgroundColor: Color(0xFF3A3A38),
-            child: Icon(Icons.group, size: 16, color: Colors.white70),
-          ),
+        const CircleAvatar(
+          radius: 14,
+          backgroundColor: Color(0xFF3A3A38),
+          child: Icon(Icons.group, size: 16, color: Colors.white70),
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
-            option.label,
+            option,
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -172,11 +151,4 @@ class _FilterFriendButtonState extends State<FilterFriendButton> {
       ],
     );
   }
-}
-
-class _FriendOption {
-  final String label;
-  final String? avatarUrl;
-
-  const _FriendOption({required this.label, this.avatarUrl});
 }

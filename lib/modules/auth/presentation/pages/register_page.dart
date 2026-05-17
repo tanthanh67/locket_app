@@ -21,7 +21,7 @@ class _RegisterPageState extends State<RegisterPage> {
         if (state is Authenticated) {
           // Đăng ký thành công, đóng trang Register để quay về AppRoot
           // Lúc này AppRoot sẽ tự động hiện WaitingVerificationPage
-          Navigator.pop(context);
+          Navigator.pop(context); 
         }
 
         if (state is AuthError) {
@@ -32,58 +32,81 @@ class _RegisterPageState extends State<RegisterPage> {
       },
 
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         backgroundColor: AppColors.surface,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           leading: const BackButton(color: Colors.white),
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "STEP ONE",
-                style: TextStyle(
-                  color: AppColors.secondary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                "Create your account",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 32),
-              _buildField("NAME", _nameController, Icons.person_outline),
-              const SizedBox(height: 16),
-              _buildField("EMAIL", _emailController, Icons.email_outlined),
-              const SizedBox(height: 16),
-              _buildField(
-                "PASSWORD",
-                _passController,
-                Icons.lock_outline,
-                isPass: true,
-              ),
-              const Spacer(),
-              BlocBuilder<AuthCubit, AuthState>(
-                builder: (context, state) {
-                  return _buildGlowButton(
-                    state is AuthLoading ? "Loading..." : "Continue  →",
-                    () => context.read<AuthCubit>().signUp(
-                      _emailController.text.trim(),
-                      _passController.text.trim(),
-                      _nameController.text.trim(),
+        body: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "STEP ONE",
+                          style: TextStyle(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "Create your account",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        _buildField(
+                          "NAME",
+                          _nameController,
+                          Icons.person_outline,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildField(
+                          "EMAIL",
+                          _emailController,
+                          Icons.email_outlined,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildField(
+                          "PASSWORD",
+                          _passController,
+                          Icons.lock_outline,
+                          isPass: true,
+                        ),
+                      ],
                     ),
-                  );
-                },
-              ),
-            ],
+                  ),
+                ),
+                BlocBuilder<AuthCubit, AuthState>(
+                  builder: (context, state) {
+                    return _buildGlowButton(
+                      state is AuthLoading ? "Loading..." : "Continue  →",
+                      () => context.read<AuthCubit>().signUp(
+                        _emailController.text.trim(),
+                        _passController.text.trim(),
+                        _nameController.text.trim(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -134,7 +157,7 @@ class _RegisterPageState extends State<RegisterPage> {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
+            color: AppColors.primary.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),

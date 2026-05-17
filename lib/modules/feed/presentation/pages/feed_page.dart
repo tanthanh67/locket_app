@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:locket_app/modules/feed/presentation/components/bottom_nav.dart';
-import 'package:locket_app/modules/feed/presentation/components/circle_button.dart';
 import 'package:locket_app/modules/feed/presentation/components/feed_area.dart';
-import 'package:locket_app/modules/feed/presentation/components/filter_friend_button.dart';
+import 'package:locket_app/modules/feed/presentation/application/cubit/feed_cubit.dart';
+import 'package:locket_app/modules/feed/presentation/data/feed_items.dart';
+import 'package:locket_app/modules/history/presentation/pages/history_page.dart';
 
 class FeedPage extends StatefulWidget {
-  const FeedPage({super.key});
+  final VoidCallback? onCameraTap;
+  final String selectedFriend;
+
+  const FeedPage({
+    super.key,
+    this.onCameraTap,
+    this.selectedFriend = 'All friends',
+  });
 
   @override
   State<FeedPage> createState() => _FeedPageState();
@@ -14,51 +23,87 @@ class FeedPage extends StatefulWidget {
 class _FeedPageState extends State<FeedPage> {
   final TextEditingController _replyController = TextEditingController();
   final FocusNode _replyFocusNode = FocusNode();
+  final PageController _pageController = PageController();
   bool _isReplying = false;
+  bool _isReturningToCamera = false;
   String _currentUser = 'John Doe';
+  FeedItem? _currentItem;
+  int? _highlightedIndex;
 
   @override
   void dispose() {
     _replyController.dispose();
     _replyFocusNode.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
   @override
+  void didUpdateWidget(covariant FeedPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedFriend != widget.selectedFriend &&
+        _pageController.hasClients) {
+      _pageController.jumpToPage(0);
+      final items = _filteredItems(context.read<FeedCubit>().state.items);
+      if (items.isNotEmpty) {
+        _handleItemChanged(items.first);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 12,
+    return BlocBuilder<FeedCubit, FeedState>(
+      builder: (context, state) {
+        final items = _filteredItems(state.items);
+
+        return Scaffold(
+          body: Stack(
+            children: [
+              Column(
+                children: [
+                  Expanded(
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: _handleFeedScroll,
+                      child: FeedArea(
+                        items: items,
+                        isLoading: state.status == FeedStatus.loading,
+                        errorMessage: state.errorMessage,
+                        onUserChanged: _handleUserChanged,
+                        onItemChanged: _handleItemChanged,
+                        controller: _pageController,
+                        highlightedIndex: _highlightedIndex,
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      CircleButton(icon: Icons.person_outline_rounded),
-                      FilterFriendButton(),
-                      CircleButton(icon: Icons.chat_bubble_outline_rounded),
-                    ],
+                  _buildFeedActions(items),
+                  BottomNav(
+                    onHistoryTap: _openHistory,
+                    onCameraTap: _returnToCamera,
                   ),
-                ),
-                Expanded(child: FeedArea(onUserChanged: _handleUserChanged)),
-                _buildCommentBar(),
-                const BottomNav(),
-              ],
-            ),
+                ],
+              ),
+              if (_isReplying) _buildReplyOverlay(),
+            ],
           ),
-          if (_isReplying) _buildReplyOverlay(),
-        ],
-      ),
+        );
+      },
     );
   }
 
+  List<FeedItem> _filteredItems(List<FeedItem> items) {
+    if (widget.selectedFriend == 'All friends') {
+      return items;
+    }
+
+    return items
+        .where((item) => item.userName == widget.selectedFriend)
+        .toList();
+  }
+
   void _handleUserChanged(String userName) {
+    _isReturningToCamera = false;
+
     if (_currentUser == userName) {
       return;
     }
@@ -68,7 +113,158 @@ class _FeedPageState extends State<FeedPage> {
     });
   }
 
-  Widget _buildCommentBar() {
+  void _handleItemChanged(FeedItem item) {
+    _isReturningToCamera = false;
+
+    if (_currentItem?.id == item.id && _currentUser == item.userName) {
+      return;
+    }
+
+    setState(() {
+      _currentItem = item;
+      _currentUser = item.userName;
+    });
+  }
+
+  bool _handleFeedScroll(ScrollNotification notification) {
+    if (notification is OverscrollNotification) {
+      return _handleFeedOverscroll(notification);
+    }
+
+    if (notification is ScrollUpdateNotification) {
+      return _handleFeedPullDownUpdate(notification);
+    }
+
+    return false;
+  }
+
+  bool _handleFeedOverscroll(OverscrollNotification notification) {
+    final onFirstItem =
+        notification.metrics.pixels <= notification.metrics.minScrollExtent + 8;
+    final pullingDown = notification.overscroll < 0;
+
+    if (!_isReturningToCamera &&
+        onFirstItem &&
+        pullingDown &&
+        widget.onCameraTap != null) {
+      _returnToCamera();
+      return true;
+    }
+
+    return false;
+  }
+
+  bool _handleFeedPullDownUpdate(ScrollUpdateNotification notification) {
+    final dragDelta = notification.dragDetails?.delta.dy ?? 0;
+    final currentPage = _pageController.hasClients
+        ? (_pageController.page ?? _pageController.initialPage.toDouble())
+        : 0.0;
+    final onFirstItem =
+        currentPage <= 0.02 &&
+        notification.metrics.pixels <= notification.metrics.minScrollExtent + 8;
+
+    if (!_isReturningToCamera &&
+        onFirstItem &&
+        dragDelta > 8 &&
+        widget.onCameraTap != null) {
+      _returnToCamera();
+      return true;
+    }
+
+    return false;
+  }
+
+  void _returnToCamera() {
+    _isReturningToCamera = true;
+    widget.onCameraTap?.call();
+
+    Future.delayed(const Duration(milliseconds: 420), () {
+      _isReturningToCamera = false;
+    });
+  }
+
+  Future<void> _openHistory() async {
+    final feedCubit = context.read<FeedCubit>();
+    final feedItems = feedCubit.state.items;
+    final selectedIndex = await Navigator.of(context).push<int>(
+      MaterialPageRoute(builder: (_) => HistoryPage(items: feedItems)),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    final items = _filteredItems(feedCubit.state.items);
+
+    if (selectedIndex == null || items.isEmpty) {
+      return;
+    }
+
+    final safeIndex = selectedIndex.clamp(0, items.length - 1).toInt();
+
+    await _pageController.animateToPage(
+      safeIndex,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _highlightedIndex = safeIndex;
+    });
+
+    _clearHighlightAfter(safeIndex);
+  }
+
+  void _clearHighlightAfter(int index) {
+    Future.delayed(const Duration(milliseconds: 320), () {
+      if (!mounted) {
+        return;
+      }
+
+      if (_highlightedIndex == index) {
+        setState(() {
+          _highlightedIndex = null;
+        });
+      }
+    });
+  }
+
+  Widget _buildFeedActions(List<FeedItem> items) {
+    final currentId = _currentItem?.id;
+    final item =
+        _findItemById(items, currentId) ??
+        (items.isNotEmpty ? items.first : null);
+
+    if (item == null) {
+      return const SizedBox(height: 8);
+    }
+
+    if (item.isMine) {
+      return _buildActivityPanel(item);
+    }
+
+    return _buildCommentBar(item);
+  }
+
+  FeedItem? _findItemById(List<FeedItem> items, String? id) {
+    if (id == null) {
+      return null;
+    }
+
+    for (final item in items) {
+      if (item.id == id) {
+        return item;
+      }
+    }
+
+    return null;
+  }
+
+  Widget _buildCommentBar(FeedItem item) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: Row(
@@ -88,21 +284,80 @@ class _FeedPageState extends State<FeedPage> {
                   border: Border.all(color: Colors.white30),
                 ),
                 child: const Text(
-                  'Gửi tin nhắn...',
+                  'Send a message...',
                   style: TextStyle(color: Colors.white54),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 8),
-          const Text('🤍', style: TextStyle(fontSize: 24)),
+          _ReactionButton(emoji: '🤍', onTap: () => _react(item, '🤍')),
           const SizedBox(width: 4),
-          const Text('🔥', style: TextStyle(fontSize: 24)),
+          _ReactionButton(emoji: '🔥', onTap: () => _react(item, '🔥')),
           const SizedBox(width: 4),
-          const Text('😍', style: TextStyle(fontSize: 24)),
+          _ReactionButton(emoji: '😍', onTap: () => _react(item, '😍')),
           const SizedBox(width: 4),
           const Icon(Icons.add_reaction_outlined, color: Colors.white70),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActivityPanel(FeedItem item) {
+    final activities = item.activities;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 360),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white12,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: activities.isEmpty
+              ? const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.auto_awesome, color: Colors.white70, size: 18),
+                    SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        'Chưa có hoạt động nào!',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Wrap(
+                  alignment: WrapAlignment.center,
+                  runSpacing: 8,
+                  spacing: 8,
+                  children: activities.map(_buildActivityChip).toList(),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActivityChip(FeedActivity activity) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(
+        '${activity.userName} ${activity.emoji}',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -166,7 +421,7 @@ class _FeedPageState extends State<FeedPage> {
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _handleSend(),
                 decoration: InputDecoration(
-                  hintText: 'Trả lời $_currentUser...',
+                  hintText: 'Reply to $_currentUser...',
                   hintStyle: const TextStyle(color: Colors.white54),
                   border: InputBorder.none,
                   isDense: true,
@@ -227,5 +482,32 @@ class _FeedPageState extends State<FeedPage> {
 
     _replyController.clear();
     _closeReply();
+  }
+
+  Future<void> _react(FeedItem item, String emoji) async {
+    if (item.id.isEmpty || item.isMine) {
+      return;
+    }
+
+    await context.read<FeedCubit>().reactToPost(item.id, emoji);
+  }
+}
+
+class _ReactionButton extends StatelessWidget {
+  final String emoji;
+  final VoidCallback onTap;
+
+  const _ReactionButton({required this.emoji, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Text(emoji, style: const TextStyle(fontSize: 24)),
+      ),
+    );
   }
 }
