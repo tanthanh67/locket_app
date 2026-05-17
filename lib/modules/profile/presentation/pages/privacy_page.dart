@@ -30,13 +30,15 @@ class PrivacyPage extends StatelessWidget {
                   subtitle: 'Friends only',
                   showSwitch: false,
                 ),
-                ProfileToggleRow(
+                ProfileStoredToggleRow(
                   icon: Icons.search_rounded,
                   title: 'Findable by username',
+                  settingPath: 'privacySettings.findableByUsername',
                 ),
-                ProfileToggleRow(
+                ProfileStoredToggleRow(
                   icon: Icons.contacts_rounded,
                   title: 'Sync contacts',
+                  settingPath: 'privacySettings.syncContacts',
                 ),
               ],
             ),
@@ -45,19 +47,22 @@ class PrivacyPage extends StatelessWidget {
             const SizedBox(height: 10),
             const ProfileToggleCard(
               rows: [
-                ProfileToggleRow(
+                ProfileStoredToggleRow(
                   icon: Icons.photo_library_rounded,
                   title: 'Save photos to camera roll',
-                  initialValue: false,
+                  settingPath: 'privacySettings.savePhotosToCameraRoll',
+                  defaultValue: false,
                 ),
-                ProfileToggleRow(
+                ProfileStoredToggleRow(
                   icon: Icons.analytics_rounded,
                   title: 'Share usage analytics',
+                  settingPath: 'privacySettings.shareUsageAnalytics',
                 ),
-                ProfileToggleRow(
+                ProfileStoredToggleRow(
                   icon: Icons.location_on_rounded,
                   title: 'Location in captions',
-                  initialValue: false,
+                  settingPath: 'privacySettings.locationInCaptions',
+                  defaultValue: false,
                 ),
               ],
             ),

@@ -7,6 +7,7 @@ class FeedItem {
   final String userName;
   final String avatarUrl;
   final String timeAgo;
+  final DateTime createdAt;
   final bool isMine;
   final List<FeedActivity> activities;
 
@@ -17,6 +18,7 @@ class FeedItem {
     required this.userName,
     required this.avatarUrl,
     required this.timeAgo,
+    required this.createdAt,
     required this.isMine,
     this.activities = const [],
   });
@@ -29,6 +31,7 @@ class FeedItem {
       userName: entity.isMine ? 'You' : entity.senderName,
       avatarUrl: entity.senderAvatarUrl,
       timeAgo: _timeAgo(entity.post.createdAt),
+      createdAt: entity.post.createdAt,
       isMine: entity.isMine,
       activities: entity.reactions
           .map(

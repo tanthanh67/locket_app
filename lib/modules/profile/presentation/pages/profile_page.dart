@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:locket_app/core/constants/app_colors.dart';
 import 'package:locket_app/modules/auth/presentation/application/cubit/auth_cubit.dart';
+import 'package:locket_app/modules/feed/presentation/data/feed_items.dart';
 import 'package:locket_app/modules/feed/presentation/application/cubit/feed_cubit.dart';
 import 'package:locket_app/modules/friends/presentation/application/cubit/friends_cubit.dart';
 import 'package:locket_app/modules/profile/presentation/components/profile_setting_widgets.dart';
@@ -302,6 +303,7 @@ class _ProfileStats extends StatelessWidget {
     return BlocBuilder<FeedCubit, FeedState>(
       builder: (context, feedState) {
         final photoCount = feedState.items.where((item) => item.isMine).length;
+        final streak = _currentPhotoStreak(feedState.items);
 
         return BlocBuilder<FriendsCubit, FriendsState>(
           builder: (context, friendsState) {
@@ -319,8 +321,8 @@ class _ProfileStats extends StatelessWidget {
                   child: _StatTile(value: '$friendCount', label: 'FRIENDS'),
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
-                  child: _StatTile(value: '0', label: 'STREAK'),
+                Expanded(
+                  child: _StatTile(value: '$streak', label: 'STREAK'),
                 ),
               ],
             );
@@ -329,6 +331,32 @@ class _ProfileStats extends StatelessWidget {
       },
     );
   }
+}
+
+int _currentPhotoStreak(List<FeedItem> items) {
+  final postedDays = items
+      .where((item) => item.isMine)
+      .map((item) => _dateOnly(item.createdAt))
+      .toSet();
+
+  if (postedDays.isEmpty) {
+    return 0;
+  }
+
+  var day = _dateOnly(DateTime.now());
+  var streak = 0;
+
+  while (postedDays.contains(day)) {
+    streak++;
+    day = day.subtract(const Duration(days: 1));
+  }
+
+  return streak;
+}
+
+DateTime _dateOnly(DateTime dateTime) {
+  final local = dateTime.toLocal();
+  return DateTime(local.year, local.month, local.day);
 }
 
 class _StatTile extends StatelessWidget {
