@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:locket_app/core/constants/app_colors.dart';
 
 class ProfileSimpleHeader extends StatelessWidget {
@@ -156,6 +158,8 @@ class ProfileToggleRow extends StatefulWidget {
   final String? trailing;
   final bool showSwitch;
   final bool initialValue;
+  final bool? value;
+  final ValueChanged<bool>? onChanged;
 
   const ProfileToggleRow({
     super.key,
@@ -165,6 +169,8 @@ class ProfileToggleRow extends StatefulWidget {
     this.trailing,
     this.showSwitch = true,
     this.initialValue = true,
+    this.value,
+    this.onChanged,
   });
 
   @override
@@ -174,14 +180,22 @@ class ProfileToggleRow extends StatefulWidget {
 class _ProfileToggleRowState extends State<ProfileToggleRow> {
   late bool _enabled = widget.initialValue;
 
+  bool get _value => widget.value ?? _enabled;
+
+  void _setValue(bool value) {
+    if (widget.value == null) {
+      setState(() {
+        _enabled = value;
+      });
+    }
+
+    widget.onChanged?.call(value);
+  }
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: widget.showSwitch
-          ? () => setState(() {
-              _enabled = !_enabled;
-            })
-          : null,
+      onTap: widget.showSwitch ? () => _setValue(!_value) : null,
       child: SizedBox(
         height: widget.subtitle == null ? 56 : 70,
         child: Row(
@@ -228,16 +242,12 @@ class _ProfileToggleRowState extends State<ProfileToggleRow> {
             if (widget.showSwitch) const SizedBox(width: 10),
             if (widget.showSwitch)
               Switch.adaptive(
-                value: _enabled,
+                value: _value,
                 activeThumbColor: Colors.black,
                 activeTrackColor: AppColors.primary,
                 inactiveThumbColor: Colors.white,
                 inactiveTrackColor: const Color(0xFF2C2C30),
-                onChanged: (value) {
-                  setState(() {
-                    _enabled = value;
-                  });
-                },
+                onChanged: _setValue,
               ),
             const SizedBox(width: 12),
           ],
@@ -245,4 +255,86 @@ class _ProfileToggleRowState extends State<ProfileToggleRow> {
       ),
     );
   }
+}
+
+class ProfileStoredToggleRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final String settingPath;
+  final bool defaultValue;
+
+  const ProfileStoredToggleRow({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.settingPath,
+    this.subtitle,
+    this.defaultValue = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return ProfileToggleRow(
+        icon: icon,
+        title: title,
+        subtitle: subtitle,
+        initialValue: defaultValue,
+      );
+    }
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data() ?? const <String, dynamic>{};
+        final value = _boolAtPath(data, settingPath) ?? defaultValue;
+
+        return ProfileToggleRow(
+          icon: icon,
+          title: title,
+          subtitle: subtitle,
+          value: value,
+          onChanged: (nextValue) async {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .set({
+                  ..._nestedMapForPath(settingPath, nextValue),
+                  'updatedAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+          },
+        );
+      },
+    );
+  }
+}
+
+bool? _boolAtPath(Map<String, dynamic> data, String path) {
+  Object? current = data;
+
+  for (final segment in path.split('.')) {
+    if (current is! Map<String, dynamic>) {
+      return null;
+    }
+    current = current[segment];
+  }
+
+  return current is bool ? current : null;
+}
+
+Map<String, dynamic> _nestedMapForPath(String path, bool value) {
+  final segments = path.split('.');
+  Map<String, dynamic> current = {segments.last: value};
+
+  for (final segment in segments.reversed.skip(1)) {
+    current = {segment: current};
+  }
+
+  return current;
 }

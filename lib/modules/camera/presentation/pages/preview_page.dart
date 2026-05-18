@@ -19,6 +19,7 @@ class _PreviewPageState extends State<PreviewPage> {
   final _captionController = TextEditingController();
   late final Future<List<UserEntity>> _friendsFuture;
   bool sendToAllFriends = true;
+  bool _isGeneratingCaption = false;
   List<String> selectedUids = [];
 
   @override
@@ -195,14 +196,37 @@ class _PreviewPageState extends State<PreviewPage> {
         hintStyle: const TextStyle(color: Colors.white38),
         filled: true,
         fillColor: Colors.white10,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
+        contentPadding: const EdgeInsets.fromLTRB(16, 12, 6, 12),
+        suffixIcon: _buildAiCaptionButton(),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(22),
           borderSide: BorderSide.none,
         ),
+      ),
+    );
+  }
+
+  Widget _buildAiCaptionButton() {
+    final disabled = widget.isVideo || _isGeneratingCaption;
+
+    return Tooltip(
+      message: widget.isVideo ? 'Only available for photos' : 'AI caption',
+      child: IconButton(
+        visualDensity: VisualDensity.compact,
+        onPressed: disabled ? null : _generateAiCaption,
+        icon: _isGeneratingCaption
+            ? const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(
+                  color: Color(0xFFFFD233),
+                  strokeWidth: 2,
+                ),
+              )
+            : Icon(
+                Icons.auto_awesome_rounded,
+                color: disabled ? Colors.white24 : const Color(0xFFFFD233),
+                size: 20,
+              ),
       ),
     );
   }
@@ -409,6 +433,47 @@ class _PreviewPageState extends State<PreviewPage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Saved successfully!')));
+  }
+
+  Future<void> _generateAiCaption() async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isGeneratingCaption = true;
+    });
+
+    try {
+      final caption = await context.read<CameraRepository>().getAiCaption(
+        widget.path,
+      );
+      final nextCaption = caption.trim().isEmpty
+          ? 'Khoảnh khắc tuyệt vời'
+          : caption.trim();
+
+      if (!mounted) {
+        return;
+      }
+
+      _captionController.text = nextCaption;
+      _captionController.selection = TextSelection.collapsed(
+        offset: nextCaption.length,
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      const fallbackCaption = 'Khoảnh khắc tuyệt vời';
+      _captionController.text = fallbackCaption;
+      _captionController.selection = const TextSelection.collapsed(
+        offset: fallbackCaption.length,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGeneratingCaption = false;
+        });
+      }
+    }
   }
 
   void _postMoment(List<UserEntity> friends) {
