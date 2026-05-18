@@ -92,82 +92,170 @@ class _FeedAreaState extends State<FeedArea> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: AspectRatio(
                 aspectRatio: 1,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: Stack(
-                    alignment: Alignment.bottomCenter,
-                    children: [
-                      AnimatedScale(
-                        scale: isHighlighted ? 1.04 : 1.0,
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutBack,
-                        child: Image.network(
-                          item.imageUrl,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                        ),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(38),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black45,
+                        blurRadius: 26,
+                        offset: Offset(0, 16),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(38),
+                    child: Stack(
+                      children: [
+                        AnimatedScale(
+                          scale: isHighlighted ? 1.04 : 1.0,
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutBack,
+                          child: Image.network(
+                            item.imageUrl,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            item.caption,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                        ),
+                        Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withValues(alpha: 0.08),
+                                  Colors.black.withValues(alpha: 0.42),
+                                ],
+                                stops: const [0.48, 0.72, 1],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        Positioned(
+                          left: 18,
+                          right: 18,
+                          bottom: 16,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              _FeedAvatar(item: item),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.userName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                    if (item.caption.trim().isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        item.caption.trim(),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.92,
+                                          ),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.18,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                item.timeAgo,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.82),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 14),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.white24,
-              backgroundImage: item.avatarUrl.isEmpty
-                  ? null
-                  : NetworkImage(item.avatarUrl),
-              child: item.avatarUrl.isEmpty
-                  ? const Icon(Icons.person, color: Colors.white70, size: 18)
-                  : null,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              item.userName,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              item.timeAgo,
-              style: const TextStyle(fontSize: 12, color: Colors.white70),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 18),
       ],
     );
   }
+}
+
+class _FeedAvatar extends StatelessWidget {
+  const _FeedAvatar({required this.item});
+
+  final FeedItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 58,
+      height: 58,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.28),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.34)),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black38,
+            blurRadius: 12,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: item.avatarUrl.isEmpty
+          ? Center(
+              child: Text(
+                _initialsFor(item.userName),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+            )
+          : Image.network(item.avatarUrl, fit: BoxFit.cover),
+    );
+  }
+}
+
+String _initialsFor(String name) {
+  final parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList();
+
+  if (parts.isEmpty) {
+    return '?';
+  }
+
+  final initials = parts.take(2).map((part) => part[0]).join();
+  return initials.toUpperCase();
 }
